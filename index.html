@@ -20,6 +20,10 @@
   header h1{font-size:20px;margin:0;letter-spacing:.3px}
   header h1 span{color:var(--accent);font-weight:800}
   .streak{margin-left:auto;display:flex;gap:8px;align-items:center;font-weight:700}
+  #muteBtn{margin-left:12px;background:transparent;border:1px solid #4443;border-radius:10px;
+    padding:6px 10px;font-size:16px;cursor:pointer;line-height:1;transition:.15s}
+  #muteBtn:hover{background:#8881}
+  #muteBtn.on{background:#c0392b22;border-color:#c0392b88}
   .streak .fire{font-size:18px}
   .subbar{color:var(--muted);font-size:13px;margin-bottom:14px}
   nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
@@ -101,6 +105,7 @@
     <div class="streak" title="Chuỗi ngày học liên tục">
       <span class="fire">🔥</span><span id="streakN">0</span><span class="muted small">ngày</span>
     </div>
+    <button id="muteBtn" title="Tắt/bật tiếng toàn app">🔊</button>
   </header>
   <div class="subbar" id="dateLine">—</div>
 
@@ -210,6 +215,39 @@
           <option value="recog">English → nghĩa Việt (nhận biết)</option>
         </select>
       </div>
+      <details id="studyOpts" style="margin-top:10px;border:1px solid #4443;border-radius:10px;padding:8px 12px">
+        <summary style="cursor:pointer;font-weight:700">⚙️ Tùy chọn Học &amp; Kiểm tra</summary>
+        <div style="padding:12px 0 4px">
+          <b>🎯 Chế độ Học</b>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0">Số thẻ mỗi vòng:</label>
+            <select id="optLearnBatch" style="max-width:190px">
+              <option value="7">7 thẻ · ~5 phút</option>
+              <option value="15">15 thẻ · ~10 phút</option>
+              <option value="20">20 thẻ · ~15 phút</option>
+              <option value="30">30 thẻ · ~22 phút</option>
+              <option value="0">Tất cả thẻ trong deck</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0"><input type="checkbox" id="optLearnMCQ"> Trắc nghiệm</label>
+            <label style="margin:0"><input type="checkbox" id="optLearnWrite"> Tự luận</label>
+          </div>
+          <p class="tag" style="margin:6px 0 14px">Bật cả hai = mỗi từ phải đúng 2 lần (trắc nghiệm → tự luận) mới tính thuộc. Chỉ bật tự luận = khó hơn, sát chiều sản sinh hơn.</p>
+
+          <b>📝 Chế độ Kiểm tra</b>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0">Số câu:</label>
+            <input type="number" id="optTestN" min="5" max="200" style="max-width:110px">
+          </div>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0"><input type="checkbox" id="optTestMCQ"> Trắc nghiệm</label>
+            <label style="margin:0"><input type="checkbox" id="optTestWrite"> Tự luận</label>
+            <label style="margin:0"><input type="checkbox" id="optTestTF"> Đúng/Sai</label>
+          </div>
+          <p class="tag" style="margin:6px 0 0">Bật nhiều loại thì các câu xen kẽ nhau. Phải bật ít nhất 1 loại.</p>
+        </div>
+      </details>
       <h3>Chế độ</h3>
       <div class="row">
         <button class="btn" data-mode="flash">🃏 Thẻ</button>
@@ -548,7 +586,17 @@ function norm(s){return (s||'').toLowerCase().trim().replace(/\s+/g,' ').replace
 function accepts(card){ // các đáp án chấp nhận cho chiều sản sinh (English)
   return card.term.split(/[\/,]/).map(x=>norm(x)).filter(Boolean);
 }
-function speak(txt){try{const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+let MUTED = localStorage.getItem('vocab_muted')==='1';
+function speak(txt){if(MUTED)return;try{const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+(function initMute(){
+  const b=document.getElementById('muteBtn');
+  if(!b)return;
+  function paint(){b.textContent=MUTED?'🔇':'🔊';b.classList.toggle('on',MUTED);
+    b.title=MUTED?'Đang TẮT tiếng — bấm để bật':'Đang bật tiếng — bấm để tắt';}
+  b.onclick=()=>{MUTED=!MUTED;localStorage.setItem('vocab_muted',MUTED?'1':'0');
+    if(MUTED){try{speechSynthesis.cancel();}catch(e){}}paint();};
+  paint();
+})();
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function curProjSets(){return S.sets.filter(s=>s.projectId===S.currentProj);}
 function setById(id){return S.sets.find(s=>s.id===id);}
@@ -570,6 +618,7 @@ function showView(v){
   if(v==='study')renderStudyPicker();
   if(v==='translate')renderTranslate();
   if(v==='settings')renderSettings();
+  if(v==='study'&&typeof paintOpts==='function')paintOpts();
 }
 
 /* ============================ HÔM NAY ============================ */
@@ -800,9 +849,51 @@ function showStudyPane(p){
 document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>showStudyPane('picker'));
 document.querySelectorAll('#studyPicker [data-mode]').forEach(b=>b.onclick=()=>startMode(b.dataset.mode));
 
+/* ---- Tùy chọn Học & Kiểm tra ---- */
+function OPT(){
+  const s=S.settings;
+  if(s.learnBatch===undefined)s.learnBatch=20;
+  if(s.learnMCQ===undefined)s.learnMCQ=true;
+  if(s.learnWrite===undefined)s.learnWrite=true;
+  if(s.testMCQ===undefined)s.testMCQ=true;
+  if(s.testWrite===undefined)s.testWrite=true;
+  if(s.testTF===undefined)s.testTF=false;
+  return s;
+}
+function paintOpts(){
+  const s=OPT();
+  const g=id=>document.getElementById(id);
+  if(!g('optLearnBatch'))return;
+  g('optLearnBatch').value=String(s.learnBatch);
+  g('optLearnMCQ').checked=s.learnMCQ;
+  g('optLearnWrite').checked=s.learnWrite;
+  g('optTestN').value=s.testN;
+  g('optTestMCQ').checked=s.testMCQ;
+  g('optTestWrite').checked=s.testWrite;
+  g('optTestTF').checked=s.testTF;
+}
+function readOpts(){
+  const s=OPT();const g=id=>document.getElementById(id);
+  if(!g('optLearnBatch'))return s;
+  s.learnBatch=+g('optLearnBatch').value;
+  s.learnMCQ=g('optLearnMCQ').checked;
+  s.learnWrite=g('optLearnWrite').checked;
+  if(!s.learnMCQ&&!s.learnWrite){s.learnWrite=true;g('optLearnWrite').checked=true;toast('Phải bật ít nhất 1 loại câu hỏi');}
+  s.testN=Math.max(1,+g('optTestN').value||20);
+  s.testMCQ=g('optTestMCQ').checked;
+  s.testWrite=g('optTestWrite').checked;
+  s.testTF=g('optTestTF').checked;
+  if(!s.testMCQ&&!s.testWrite&&!s.testTF){s.testMCQ=true;g('optTestMCQ').checked=true;toast('Phải bật ít nhất 1 loại câu hỏi');}
+  save();return s;
+}
+['optLearnBatch','optLearnMCQ','optLearnWrite','optTestN','optTestMCQ','optTestWrite','optTestTF']
+  .forEach(id=>{const e=document.getElementById(id);if(e)e.onchange=readOpts;});
+paintOpts();
+
 function startMode(mode){
   const set=setById(document.getElementById('studySet').value);
   if(!set||!set.cards.length){toast('Học phần trống');return;}
+  readOpts();
   const dir=document.getElementById('studyDir').value;
   session={set,mode,dir,cards:shuffle(set.cards),i:0,correct:0,answers:[],_touched:false};
   S.resume=null;
@@ -841,9 +932,16 @@ function finishFlash(){clearResume();completeStudy(session.set);showResult('Đã
 function askAnswer(card,dir){ return dir==='prod'?{q:card.def,a:card.term}:{q:card.term,a:card.def}; }
 function startLearn(){
   showStudyPane('quiz');
-  session.queue=shuffle(session.set.cards).map(c=>({card:c,got:0}));
+  const s=OPT();
+  session.steps=[];
+  if(s.learnMCQ)session.steps.push('mcq');
+  if(s.learnWrite)session.steps.push('write');
+  if(!session.steps.length)session.steps=['write'];
+  let pool=shuffle(session.set.cards);
+  if(s.learnBatch>0)pool=pool.slice(0,s.learnBatch);
+  session.queue=pool.map(c=>({card:c,got:0}));
   session.total=session.queue.length;session.mastered=0;session.tries=0;session.wrongs=0;
-  document.getElementById('quizTitle').textContent='Trắc nghiệm + Tự luận · '+session.set.name;
+  document.getElementById('quizTitle').textContent='Học · '+session.set.name+' · '+session.total+' thẻ';
   drawLearnNext();
 }
 function learnHeader(){return `Đã thuộc ${session.mastered}/${session.total} · còn ${session.queue.length} lượt`;}
@@ -852,7 +950,8 @@ function drawLearnNext(){
   if(!session.queue.length){finishLearn();return;}
   setProg(session.mastered/session.total);
   const st=session.queue[0];
-  if(st.got===0)drawLearnMCQ(st);else drawLearnWrite(st);
+  const steps=session.steps||['mcq','write'];
+  if(steps[Math.min(st.got,steps.length-1)]==='mcq')drawLearnMCQ(st);else drawLearnWrite(st);
 }
 // Mỗi từ cần đúng 2 lần (trắc nghiệm → tự luận) = THUỘC. Sai → reset + đẩy lại hàng đợi (lặp nhiều hơn).
 function learnDone(st,correct){
@@ -860,7 +959,7 @@ function learnDone(st,correct){
   session.tries++;session.queue.shift();
   if(correct){
     st.got++;
-    if(st.got>=2)session.mastered++; else requeue(st,3);
+    if(st.got>=(session.steps||['mcq','write']).length)session.mastered++; else requeue(st,3);
   }else{
     session.wrongs++;st.got=0;st.card.starred=true;requeue(st,2);
   }
@@ -945,15 +1044,54 @@ function drawWrite(){
 }
 /* ---- Test ---- */
 function startTest(){
-  const n=Math.min(S.settings.testN,session.set.cards.length);
+  const s=OPT();
+  session.types=[];
+  if(s.testMCQ)session.types.push('mcq');
+  if(s.testWrite)session.types.push('write');
+  if(s.testTF)session.types.push('tf');
+  if(!session.types.length)session.types=['mcq'];
+  const n=Math.min(s.testN,session.set.cards.length);
   session.cards=shuffle(session.set.cards).slice(0,n);
   session.mode='test';showStudyPane('quiz');
   document.getElementById('quizTitle').textContent='📝 Kiểm tra · '+session.set.name+' · '+n+' câu';
   session.i=0;session.correct=0;drawTestItem();
 }
-function drawTestItem(){ // xen kẽ MCQ/Write
-  const useWrite=session.i%2===1;
-  if(useWrite)drawWriteTest();else drawMCQTest();
+function drawTestItem(){
+  const t=(session.types||['mcq','write'])[session.i%(session.types||['mcq','write']).length];
+  if(t==='write')drawWriteTest();
+  else if(t==='tf')drawTFTest();
+  else drawMCQTest();
+}
+function drawTFTest(){
+  const c=session.cards[session.i];const {q,a}=askAnswer(c,session.dir);
+  setProg(session.i/session.cards.length);
+  // 50% hiện đáp án đúng, 50% hiện đáp án của thẻ khác
+  const isTrue=Math.random()<0.5;
+  let shown=a;
+  if(!isTrue){
+    const others=session.set.cards.filter(x=>x.id!==c.id);
+    if(others.length){const o=others[Math.floor(Math.random()*others.length)];
+      shown=session.dir==='prod'?o.term:o.def;}
+  }
+  const truth=norm(shown)===norm(a);
+  const body=document.getElementById('quizBody');
+  body.innerHTML=`<p class="tag">Câu ${session.i+1}/${session.cards.length} · đúng/sai</p>
+    <div class="flash" style="min-height:110px;cursor:default">
+      <div class="big" style="font-size:21px">${esc(q)}</div>
+      <div class="sub" style="margin-top:10px;font-size:19px">➜ <b>${esc(shown)}</b></div></div>
+    <div class="opts" id="tfo"></div><div id="tFb" style="margin-top:8px"></div>`;
+  const oc=document.getElementById('tfo');
+  [['✓ Đúng',true],['✗ Sai',false]].forEach(([lab,val])=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=lab;
+    b.onclick=()=>{
+      const ok=(val===truth);
+      [...oc.children].forEach(x=>x.style.pointerEvents='none');
+      touchActivity();bumpCard(c,ok,session.dir);
+      if(ok){session.correct++;b.classList.add('correct');}
+      else{b.classList.add('wrong');c.starred=true;
+        document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án đúng của "${esc(q)}" là: <b>${esc(a)}</b>`;}
+      saveResume();setTimeout(()=>nextTest(),ok?450:1200);};
+    oc.appendChild(b);});
 }
 function drawMCQTest(){
   const c=session.cards[session.i];const {q,a}=askAnswer(c,session.dir);
