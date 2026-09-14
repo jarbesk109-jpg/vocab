@@ -682,7 +682,7 @@ function renderToday(){
   })();
   // cảnh báo backup
   const tomo=addDays(t,1), day2=addDays(t,2);
-  const hasNew=day=>S.sets.some(s=>s.anchor===day && s.stageIdx===0 && !daHoc(s)); // FIX 13/09: deck cũ bị xếp lại KHÔNG tính là từ mới
+  const hasNew=day=>S.sets.some(s=>s.anchor===day && s.stageIdx===0); // deck bắt đầu ngày đó (mới hoặc ôn lại) đều là 'có từ để học'
   if(!hasNew(tomo)){
     bn.innerHTML+=`<div class="banner b-bad">🚨 <b>QUAN TRỌNG:</b> chưa có học phần MỚI cho ngày mai (${fmt(tomo)}). Tạo deck backup ngay để mai có từ học.</div>`;
   }else if(!hasNew(day2)){
