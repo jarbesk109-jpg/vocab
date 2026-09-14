@@ -237,15 +237,25 @@
 
           <b>📝 Chế độ Kiểm tra</b>
           <div class="row" style="margin-top:6px">
-            <label style="margin:0">Số câu:</label>
-            <input type="number" id="optTestN" min="5" max="200" style="max-width:110px">
+            <label style="margin:0">Số câu: <b>hết học phần × 2 chiều</b> (mỗi từ hỏi 1 lần Việt→Anh + 1 lần Anh→Việt)</label>
+            <input type="number" id="optTestN" min="5" max="200" style="max-width:110px;display:none">
           </div>
           <div class="row" style="margin-top:6px">
-            <label style="margin:0"><input type="checkbox" id="optTestMCQ"> Trắc nghiệm</label>
-            <label style="margin:0"><input type="checkbox" id="optTestWrite"> Tự luận</label>
-            <label style="margin:0"><input type="checkbox" id="optTestTF"> Đúng/Sai</label>
+            <label style="margin:0">Việt→Anh (sản sinh):</label>
+            <select id="optTestProd" style="max-width:190px">
+              <option value="write">Tự luận</option><option value="mcq">Trắc nghiệm</option>
+              <option value="tf">Đúng/Sai</option><option value="mix">Mix cả 3</option>
+            </select>
           </div>
-          <p class="tag" style="margin:6px 0 0">Bật nhiều loại thì các câu xen kẽ nhau. Phải bật ít nhất 1 loại.</p>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0">Anh→Việt (nhận biết):</label>
+            <select id="optTestRecog" style="max-width:190px">
+              <option value="mcq">Trắc nghiệm</option><option value="tf">Đúng/Sai</option>
+              <option value="write">Tự luận</option><option value="mix">Mix cả 3</option>
+            </select>
+          </div>
+          <p class="tag" style="margin:6px 0 0">Mặc định: sản sinh gõ tiếng Anh, nhận biết chọn nghĩa. Đổi tùy điều kiện học — mix thì 3 loại xen kẽ trong chiều đó. Lưu ý: tự luận chiều Anh→Việt bắt gõ khớp nghĩa tiếng Việt y hệt.</p>
+          <input type="checkbox" id="optTestMCQ" style="display:none"><input type="checkbox" id="optTestWrite" style="display:none"><input type="checkbox" id="optTestTF" style="display:none">
         </div>
       </details>
       <h3>Chế độ</h3>
@@ -326,7 +336,7 @@
           <input id="setKpi" type="number" min="50" max="100" step="5">
         </div>
         <div>
-          <label>Số câu mặc định mỗi bài Kiểm tra</label>
+          <label>Số câu mỗi bài Kiểm tra — <b>không dùng nữa</b>: Kiểm tra luôn chạy hết học phần × 2 chiều</label>
           <input id="setTestN" type="number" min="5" max="100" step="5">
         </div>
       </div>
@@ -489,7 +499,7 @@ function cst(c,dir){
 }
 function bumpCard(c,ok,dir,typo){
   const s=cst(c,dir);
-  if(ok){s.r++;s.streak++;if(typo)s.typo++;}else{s.w++;s.streak=0;}
+  if(ok){s.r++;s.streak++;if(typo)s.typo++;}else{s._prevStreak=s.streak;s.w++;s.streak=0;}
   s.last=todayStr();
 }
 function knownDir(c,dir){ return cst(c,dir).streak>=2; }
@@ -510,6 +520,7 @@ function saveResume(){
     S.resume={setId:session.set.id,mode:session.mode,dir:session.dir,
       i:session.i,correct:session.correct||0,
       cardIds:(session.cards||[]).map(c=>c.id),
+      dirs:session.dirs||null,
       queue:(session.queue||[]).map(q=>({id:q.card.id,got:q.got})),
       total:session.total||0,mastered:session.mastered||0,
       tries:session.tries||0,wrongs:session.wrongs||0,
@@ -607,6 +618,16 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 function norm(s){return (s||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/[.,;!?]+$/,'').replace(/^(to|a|an|the)\s+/,'');}
 function accepts(card){ // các đáp án chấp nhận cho chiều sản sinh (English)
   return card.term.split(/[\/,]/).map(x=>norm(x)).filter(Boolean);
+}
+/* FIX 14/09: chiều Anh→Việt — gõ ĐÚNG MỘT nghĩa (tách bởi , hoặc /) là đúng, không bắt gõ cả chuỗi.
+   Bỏ dấu tiếng Việt khi so để "chinh phu" = "chính phủ". Nghĩa còn lại vẫn hiện ra để ôn. */
+function normVi(x){return norm(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');}
+function acceptsVi(card){ return card.def.split(/[\/,]/).map(normVi).filter(Boolean).concat([normVi(card.def)]); }
+function isRight(c,dir,val){ return dir==='prod' ? accepts(c).includes(norm(val)) : acceptsVi(c).includes(normVi(val)); }
+/* Nút "Tôi đã gõ đúng": app chấm sai nhưng người học thấy nghĩa đúng (từ đồng nghĩa app không có).
+   Hoàn lại cú chấm sai, ghi thành đúng, gỡ sao. Danh dự tự chấm. */
+function overrideRight(c,dir){
+  const st=cst(c,dir); if(st.w>0)st.w--; st.r++; st.streak=(st._prevStreak||0)+1; delete st._prevStreak; st.last=todayStr(); c.starred=false;
 }
 let MUTED = localStorage.getItem('vocab_muted')==='1';
 function speak(txt){if(MUTED)return;try{const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
@@ -860,6 +881,7 @@ function resumeStudy(){
   const byId=id=>set.cards.find(c=>c.id===id);
   session={set,mode:r.mode,dir:r.dir,i:r.i||0,correct:r.correct||0,answers:[],_touched:true,
     cards:(r.cardIds||[]).map(byId).filter(Boolean),
+    dirs:r.dirs||null,
     total:r.total||0,mastered:r.mastered||0,tries:r.tries||0,wrongs:r.wrongs||0};
   if(!session.cards.length)session.cards=shuffle(set.cards);
   showView('study');
@@ -893,6 +915,8 @@ document.querySelectorAll('#studyPicker [data-mode]').forEach(b=>b.onclick=()=>s
 /* ---- Tùy chọn Học & Kiểm tra ---- */
 function OPT(){
   const s=S.settings;
+  if(s.testProd===undefined)s.testProd='write';   // FIX 14/09: loại câu theo chiều
+  if(s.testRecog===undefined)s.testRecog='mcq';
   if(s.learnBatch===undefined)s.learnBatch=20;
   if(s.learnMCQ===undefined)s.learnMCQ=true;
   if(s.learnWrite===undefined)s.learnWrite=true;
@@ -912,6 +936,8 @@ function paintOpts(){
   g('optTestMCQ').checked=s.testMCQ;
   g('optTestWrite').checked=s.testWrite;
   g('optTestTF').checked=s.testTF;
+  if(g('optTestProd'))g('optTestProd').value=s.testProd;
+  if(g('optTestRecog'))g('optTestRecog').value=s.testRecog;
 }
 function readOpts(){
   const s=OPT();const g=id=>document.getElementById(id);
@@ -924,10 +950,12 @@ function readOpts(){
   s.testMCQ=g('optTestMCQ').checked;
   s.testWrite=g('optTestWrite').checked;
   s.testTF=g('optTestTF').checked;
+  if(g('optTestProd'))s.testProd=g('optTestProd').value;
+  if(g('optTestRecog'))s.testRecog=g('optTestRecog').value;
   if(!s.testMCQ&&!s.testWrite&&!s.testTF){s.testMCQ=true;g('optTestMCQ').checked=true;toast('Phải bật ít nhất 1 loại câu hỏi');}
   save();return s;
 }
-['optLearnBatch','optLearnMCQ','optLearnWrite','optTestN','optTestMCQ','optTestWrite','optTestTF']
+['optLearnBatch','optLearnMCQ','optLearnWrite','optTestN','optTestMCQ','optTestWrite','optTestTF','optTestProd','optTestRecog']
   .forEach(id=>{const e=document.getElementById(id);if(e)e.onchange=readOpts;});
 paintOpts();
 
@@ -1033,7 +1061,7 @@ function drawLearnWrite(st){
     <div id="lFb" style="margin-top:10px"></div>`;
   const inp=document.getElementById('lIn');inp.focus();
   const check=()=>{
-    const ok=session.dir==='prod'?accepts(c).includes(norm(inp.value)):norm(inp.value)===norm(c.def);
+    const ok=isRight(c,session.dir,inp.value);
     const fb=document.getElementById('lFb');inp.disabled=true;document.getElementById('lChk').classList.add('hide');
     if(ok){fb.innerHTML='<span class="pill done">✓ Đúng — thuộc từ này!</span>';if(session.dir==='prod')speak(c.term);setTimeout(()=>learnDone(st,true),650);}
     else{const typed=inp.value.trim()||'(để trống)';if(session.dir==='prod')speak(c.term);
@@ -1066,15 +1094,16 @@ function drawWrite(){
     <button class="btn" id="wChk">Kiểm tra</button></div><div id="wFb" style="margin-top:10px"></div>`;
   const inp=document.getElementById('wIn');inp.focus();
   let retype=false;
-  const matches=v=>session.dir==='prod'?accepts(c).includes(norm(v)):norm(v)===norm(c.def);
+  const matches=v=>isRight(c,session.dir,v);
   const check=()=>{
     const fb=document.getElementById('wFb');
     if(!retype){
       if(matches(inp.value)){session.correct++;touchActivity();bumpCard(c,true,session.dir);saveResume();fb.innerHTML='<span class="pill done">✓ Đúng</span>';if(session.dir==='prod')speak(c.term);
         inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,600);}
       else{c.starred=true;touchActivity();bumpCard(c,false,session.dir);saveResume();retype=true;if(session.dir==='prod')speak(c.term);
-        fb.innerHTML=`<span class="pill broken">✗ Sai</span> &nbsp;Đáp án: <b>${esc(ans)}</b> <span class="tag">(đã gắn ⭐)</span><br><span class="tag">Gõ lại cho đúng để đi tiếp:</span>`;
-        inp.value='';inp.focus();document.getElementById('wChk').textContent='Xác nhận';}
+        fb.innerHTML=`<span class="pill broken">✗ Sai</span> &nbsp;Đáp án: <b>${esc(ans)}</b> <span class="tag">(đã gắn ⭐)</span> <button class="btn gray" id="wOverride" style="margin-left:6px">✔ Tôi đã gõ đúng</button><br><span class="tag">Gõ lại cho đúng để đi tiếp:</span>`;
+        inp.value='';inp.focus();document.getElementById('wChk').textContent='Xác nhận';
+        document.getElementById('wOverride').onclick=()=>{overrideRight(c,session.dir);session.correct++;saveResume();fb.innerHTML='<span class="pill done">✓ Tính là đúng</span>';inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,500);};}
     }else{
       if(matches(inp.value)){fb.innerHTML='<span class="pill done">✓ Đúng rồi!</span>';inp.disabled=true;document.getElementById('wChk').classList.add('hide');if(session.dir==='prod')speak(c.term);setTimeout(nextWrite,500);}
       else{toast('Chưa khớp — gõ lại: '+ans);inp.select();}
@@ -1091,14 +1120,23 @@ function startTest(){
   if(s.testWrite)session.types.push('write');
   if(s.testTF)session.types.push('tf');
   if(!session.types.length)session.types=['mcq'];
-  const n=Math.min(s.testN,session.set.cards.length);
-  session.cards=shuffle(session.set.cards).slice(0,n);
+  /* FIX 14/09: Kiểm tra = TOÀN BỘ học phần × 2 chiều. Mỗi thẻ hỏi 2 lần:
+     Việt→Anh (sản sinh) + Anh→Việt (nhận biết). Thuộc = đạt KPI trên cả hai chiều cộng lại. */
+  const items=[];
+  session.set.cards.forEach(c=>{items.push({c,dir:'prod'});items.push({c,dir:'recog'});});
+  const sh=shuffle(items);
+  session.cards=sh.map(x=>x.c); session.dirs=sh.map(x=>x.dir);
+  const n=session.cards.length;
   session.mode='test';showStudyPane('quiz');
-  document.getElementById('quizTitle').textContent='📝 Kiểm tra · '+session.set.name+' · '+n+' câu';
+  document.getElementById('quizTitle').textContent='📝 Kiểm tra · '+session.set.name+' · '+n+' câu ('+session.set.cards.length+' từ × 2 chiều)';
   session.i=0;session.correct=0;drawTestItem();
 }
 function drawTestItem(){
-  const t=(session.types||['mcq','write'])[session.i%(session.types||['mcq','write']).length];
+  // FIX 14/09: chiều đổi theo từng câu. Sản sinh → ưu tiên tự luận (gõ tiếng Anh).
+  // Nhận biết → trắc nghiệm/đúng-sai (gõ y hệt nghĩa tiếng Việt là bắt lỗi giả, không đo được nhận biết).
+  if(session.dirs&&session.dirs[session.i])session.dir=session.dirs[session.i];
+  const o=OPT(); const pick=session.dir==='prod'?o.testProd:o.testRecog;
+  const t = pick==='mix' ? ['write','mcq','tf'][session.i%3] : pick;
   if(t==='write')drawWriteTest();
   else if(t==='tf')drawTFTest();
   else drawMCQTest();
@@ -1155,10 +1193,15 @@ function drawWriteTest(){
     <div class="flash" style="min-height:80px;cursor:default"><div class="big" style="font-size:22px">${esc(q)}</div></div>
     <div class="row" style="margin-top:12px"><input id="tIn" placeholder="Gõ đáp án..." autocomplete="off" style="flex:1"><button class="btn" id="tChk">OK</button></div><div id="tFb" style="margin-top:8px"></div>`;
   const inp=document.getElementById('tIn');inp.focus();
-  const check=()=>{const val=inp.value;const ok=session.dir==='prod'?accepts(c).includes(norm(val)):norm(val)===norm(c.def);
+  const check=()=>{const val=inp.value;const ok=isRight(c,session.dir,val);
     touchActivity();bumpCard(c,ok,session.dir);
-    if(ok)session.correct++;else{c.starred=true;document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án: <b>${esc(session.dir==='prod'?c.term:c.def)}</b>`;}
-    inp.disabled=true;saveResume();setTimeout(()=>nextTest(),ok?350:1000);};
+    if(ok){session.correct++;inp.disabled=true;saveResume();setTimeout(()=>nextTest(),350);return;}
+    c.starred=true;inp.disabled=true;saveResume();
+    // FIX 14/09: sai → hiện đáp án + 2 nút: "Tôi đã gõ đúng" (hoàn lại) / "Tiếp". Không tự nhảy câu.
+    document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án: <b>${esc(session.dir==='prod'?c.term:c.def)}</b>
+      <div class="row" style="margin-top:8px"><button class="btn gray" id="tOverride">✔ Tôi đã gõ đúng</button><button class="btn" id="tNext">Tiếp →</button></div>`;
+    document.getElementById('tOverride').onclick=()=>{overrideRight(c,session.dir);session.correct++;saveResume();nextTest();};
+    document.getElementById('tNext').onclick=()=>nextTest();};
   document.getElementById('tChk').onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!inp.disabled)check();});
 }
 function nextTest(){if(session.i<session.cards.length-1){session.i++;drawTestItem();}else{
