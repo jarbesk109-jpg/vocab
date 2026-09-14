@@ -1,0 +1,19 @@
+# Giữ Supabase free tier không bị pause (nó ngủ sau 7 ngày không có request).
+# Chạy 2 lần/tuần → dù Kingston không mở app, project vẫn thức.
+name: keep-supabase-awake
+on:
+  schedule:
+    - cron: '0 1 * * 1,4'   # 01:00 UTC thứ Hai & thứ Năm = 08:00 giờ VN
+  workflow_dispatch:         # cho phép bấm chạy tay trong tab Actions
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://quomfkcbbcnuubrpbwpl.supabase.co/rest/v1/vocab_sync?select=id&limit=1" \
+            -H "apikey: sb_publishable_vo-fgRVSsp4wcfECUse7Cw_9obpBZzr" \
+            -H "Authorization: Bearer sb_publishable_vo-fgRVSsp4wcfECUse7Cw_9obpBZzr")
+          echo "HTTP $code"
+          test "$code" = "200"
