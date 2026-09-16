@@ -453,22 +453,32 @@ function applyReschedule(today){
   return n;
 }
 // hoàn thành 1 lượt học/ôn hôm nay cho set (đẩy chuỗi tiến 1 nấc)
-function completeStudy(set){
+/* FIX 16/09: lịch neo theo NGÀY HỌC THẬT, không neo theo ngày xếp sẵn.
+   (1) Mỗi deck chỉ tiến TỐI ĐA 1 nấc/ngày — Học + Kiểm tra cùng ngày = 1 lượt, không nhảy cóc qua +1.
+   (2) Làm trễ L ngày → dời mốc neo L ngày → chặng sau tính từ hôm thật sự ôn.
+   (3) Học deck chưa tới ngày → Ngày 1 = hôm nay (học 2 deck/ngày được). */
+function advanceStage(set){
   const today=todayStr();
+  if(set.lastCompleted===today) return false;
   const st=setStatus(set,today);
-  if(st.kind==='new'||st.kind==='review'){
-    set.stageIdx++; set.lastCompleted=today; set.rescheduled=false;
+  if(st.kind==='future'){ set.anchor=today; set.stageIdx=1; }
+  else if(st.kind==='new'||st.kind==='review'){
+    if(st.late) set.anchor=addDays(set.anchor,st.late);
+    set.stageIdx++;
   }
+  else return false;
+  set.lastCompleted=today; set.rescheduled=false;
+  return true;
+}
+function completeStudy(set){
+  advanceStage(set);
   markActivity(); save();
 }
 function recordTest(set,pct){
   const today=todayStr();
   set.history.push({date:today,pct:Math.round(pct)});
   // đạt KPI: đẩy chuỗi nếu đang tới hạn hôm nay
-  const st=setStatus(set,today);
-  if((st.kind==='new'||st.kind==='review')&&pct>=S.settings.kpi){
-    set.stageIdx++; set.lastCompleted=today; set.rescheduled=false;
-  }
+  if(pct>=S.settings.kpi) advanceStage(set);
   markActivity(); save();
 }
 function isMastered(set){ // THUỘC = mọi thẻ vững cả 2 chiều
@@ -703,7 +713,9 @@ function renderToday(){
   })();
   // cảnh báo backup
   const tomo=addDays(t,1), day2=addDays(t,2);
-  const hasNew=day=>S.sets.some(s=>s.anchor===day && s.stageIdx===0); // deck bắt đầu ngày đó (mới hoặc ôn lại) đều là 'có từ để học'
+  // FIX 16/09: được học trước lịch → lịch có thể có ngày trống. Chỉ cảnh báo khi KHO deck chưa học sắp cạn.
+  const queued=S.sets.filter(s=>s.stageIdx===0 && dayDiff(s.anchor,t)>0).length;
+  const hasNew=day=>day===tomo?queued>=1:queued>=2;
   if(!hasNew(tomo)){
     bn.innerHTML+=`<div class="banner b-bad">🚨 <b>QUAN TRỌNG:</b> chưa có học phần MỚI cho ngày mai (${fmt(tomo)}). Tạo deck backup ngay để mai có từ học.</div>`;
   }else if(!hasNew(day2)){
@@ -744,9 +756,10 @@ function renderToday(){
   document.getElementById('stBest').textContent=bestStreak();
 }
 function journeyDay(){
-  const anchors=S.sets.map(s=>s.anchor).sort();
-  if(!anchors.length)return 1;
-  const start=anchors[0], t=todayStr();
+  // FIX 16/09: mốc neo giờ có thể dời → lấy ngày học thật sớm nhất (activity) làm ngày khởi đầu
+  const days=S.sets.map(s=>s.anchor).concat(Object.keys(S.activity||{}).filter(k=>S.activity[k])).sort();
+  if(!days.length)return 1;
+  const start=days[0], t=todayStr();
   const d=dayDiff(t,start);return d<0?1:d+1;
 }
 window.quickStudy=function(id){document.getElementById('studySet').value=id;showView('study');document.getElementById('studySet').value=id;};
