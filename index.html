@@ -664,14 +664,52 @@ function overrideRight(c,dir){
   const st=cst(c,dir); if(st.w>0)st.w--; st.r++; st.streak=(st._prevStreak||0)+1; delete st._prevStreak; st.last=todayStr(); c.starred=false;
 }
 let MUTED = localStorage.getItem('vocab_muted')==='1';
-function speak(txt){if(MUTED)return;try{const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+/* FIX 16/09: phát âm chắc ăn hơn trên Chrome.
+   - Chọn giọng tiếng Anh cụ thể (máy tiếng Việt có thể lấy nhầm giọng mặc định)
+   - cancel() rồi speak() liền nhau → Chrome hay nuốt mất câu → chờ 1 nhịp
+   - resume() gỡ trạng thái "kẹt pause" sau khi tab nằm nền lâu
+   - giữ tham chiếu utterance (Chrome dọn rác sớm → im lặng)
+   - giọng online (Google) lỗi → tự đổi sang giọng offline của máy */
+let VOICE=null,_utt=null;
+function pickVoice(preferLocal){
+  try{const vs=speechSynthesis.getVoices().filter(v=>/^en[-_]/i.test(v.lang));
+    const us=vs.filter(v=>/en[-_]US/i.test(v.lang));
+    const pool=us.length?us:vs;
+    VOICE=(preferLocal?pool.find(v=>v.localService):null)||pool.find(v=>/Google/i.test(v.name))||pool.find(v=>v.localService)||pool[0]||null;
+  }catch(e){VOICE=null;}
+  return VOICE;
+}
+try{pickVoice();speechSynthesis.addEventListener('voiceschanged',()=>pickVoice());}catch(e){}
+function speak(txt,_retry){
+  if(MUTED||!txt)return;
+  const ss=window.speechSynthesis; if(!ss)return;
+  try{
+    if(!VOICE)pickVoice();
+    const say=String(txt).split('/')[0].trim();
+    const go=()=>{
+      const u=new SpeechSynthesisUtterance(say);
+      if(VOICE){u.voice=VOICE;u.lang=VOICE.lang;}else u.lang='en-US';
+      u.rate=.9;u.volume=1;
+      u.onerror=e=>{ if(!_retry && e.error!=='interrupted' && e.error!=='canceled' && VOICE && !VOICE.localService){ pickVoice(true); speak(txt,true);} };
+      _utt=u; ss.resume(); ss.speak(u);
+    };
+    if(ss.speaking||ss.pending){ss.cancel();setTimeout(go,90);}else go();
+  }catch(e){}
+}
+/* Anh→Việt: đọc từ tiếng Anh ngay khi hiện câu hỏi (luyện nghe, không lộ đáp án) */
+function sayQ(c){ if(session&&session.dir==='recog'&&c)speak(c.term); }
 (function initMute(){
   const b=document.getElementById('muteBtn');
   if(!b)return;
   function paint(){b.textContent=MUTED?'🔇':'🔊';b.classList.toggle('on',MUTED);
     b.title=MUTED?'Đang TẮT tiếng — bấm để bật':'Đang bật tiếng — bấm để tắt';}
   b.onclick=()=>{MUTED=!MUTED;localStorage.setItem('vocab_muted',MUTED?'1':'0');
-    if(MUTED){try{speechSynthesis.cancel();}catch(e){}}paint();};
+    if(MUTED){try{speechSynthesis.cancel();}catch(e){}}
+    else{ // bật lại → đọc thử 1 tiếng để biết chắc loa chạy
+      if(!window.speechSynthesis||!speechSynthesis.getVoices().length)toast('⚠️ Trình duyệt chưa có giọng đọc tiếng Anh');
+      else speak('sound on');
+    }
+    paint();};
   paint();
 })();
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -1084,6 +1122,7 @@ function drawLearnMCQ(st){
   body.innerHTML=`<p class="tag">Trắc nghiệm · ${learnHeader()}</p>
     <div class="flash" style="min-height:110px;cursor:default"><div class="big" style="font-size:24px">${esc(q)}</div></div>
     <div class="opts" id="lo"></div>`;
+  sayQ(c);
   const oc=document.getElementById('lo');
   opts.forEach(o=>{const b=document.createElement('button');b.className='opt';b.textContent=o;
     b.onclick=()=>{const ok=norm(o)===norm(a);
@@ -1093,7 +1132,7 @@ function drawLearnMCQ(st){
       setTimeout(()=>learnDone(st,ok),ok?450:950);};oc.appendChild(b);});
 }
 function drawLearnWrite(st){
-  const c=st.card;const {q}=askAnswer(c,session.dir);
+  const c=st.card;const {q}=askAnswer(c,session.dir);sayQ(c);
   const ans=session.dir==='prod'?c.term:c.def;
   const body=document.getElementById('quizBody');
   body.innerHTML=`<p class="tag">Tự luận · ${learnHeader()}</p>
@@ -1126,7 +1165,7 @@ function nextWrite(){if(session.i<session.cards.length-1){session.i++;drawWrite(
 function finishWrite(){const pct=session.cards.length?session.correct/session.cards.length*100:0;clearResume();completeStudy(session.set);
   showResult('Viết xong ⌨️',`Đúng ngay lần đầu ${session.correct}/${session.cards.length} (${Math.round(pct)}%). Lượt học đã ghi nhận. Từ nào sai đã gắn ⭐ để ôn lại.`,pct>=S.settings.kpi);}
 function drawWrite(){
-  const c=session.cards[session.i];const {q}=askAnswer(c,session.dir);setProg(session.i/session.cards.length);
+  const c=session.cards[session.i];const {q}=askAnswer(c,session.dir);setProg(session.i/session.cards.length);sayQ(c);
   const ans=session.dir==='prod'?c.term:c.def;
   const body=document.getElementById('quizBody');
   body.innerHTML=`<p class="tag">${session.i+1}/${session.cards.length}</p>
@@ -1200,13 +1239,14 @@ function drawTFTest(){
       <div class="big" style="font-size:21px">${esc(q)}</div>
       <div class="sub" style="margin-top:10px;font-size:19px">➜ <b>${esc(shown)}</b></div></div>
     <div class="opts" id="tfo"></div><div id="tFb" style="margin-top:8px"></div>`;
+  sayQ(c);
   const oc=document.getElementById('tfo');
   [['✓ Đúng',true],['✗ Sai',false]].forEach(([lab,val])=>{
     const b=document.createElement('button');b.className='opt';b.textContent=lab;
     b.onclick=()=>{
       const ok=(val===truth);
       [...oc.children].forEach(x=>x.style.pointerEvents='none');
-      touchActivity();bumpCard(c,ok,session.dir);
+      touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
       if(ok){session.correct++;b.classList.add('correct');}
       else{b.classList.add('wrong');c.starred=true;
         document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án đúng của "${esc(q)}" là: <b>${esc(a)}</b>`;}
@@ -1220,10 +1260,11 @@ function drawMCQTest(){
   const body=document.getElementById('quizBody');
   body.innerHTML=`<p class="tag">Câu ${session.i+1}/${session.cards.length} · trắc nghiệm</p>
     <div class="flash" style="min-height:90px;cursor:default"><div class="big" style="font-size:22px">${esc(q)}</div></div><div class="opts" id="mo"></div>`;
+  sayQ(c);
   const oc=document.getElementById('mo');
   opts.forEach(o=>{const b=document.createElement('button');b.className='opt';b.textContent=o;
     b.onclick=()=>{const ok=norm(o)===norm(a);[...oc.children].forEach(x=>{x.style.pointerEvents='none';if(norm(x.textContent)===norm(a))x.classList.add('correct');});
-      touchActivity();bumpCard(c,ok,session.dir);
+      touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
       if(ok)session.correct++;else{b.classList.add('wrong');c.starred=true;}
       saveResume();setTimeout(()=>nextTest(),ok?450:850);};oc.appendChild(b);});
 }
@@ -1233,9 +1274,9 @@ function drawWriteTest(){
   body.innerHTML=`<p class="tag">Câu ${session.i+1}/${session.cards.length} · viết</p>
     <div class="flash" style="min-height:80px;cursor:default"><div class="big" style="font-size:22px">${esc(q)}</div></div>
     <div class="row" style="margin-top:12px"><input id="tIn" placeholder="Gõ đáp án..." autocomplete="off" style="flex:1"><button class="btn" id="tChk">OK</button></div><div id="tFb" style="margin-top:8px"></div>`;
-  const inp=document.getElementById('tIn');inp.focus();
+  const inp=document.getElementById('tIn');inp.focus();sayQ(c);
   const check=()=>{const val=inp.value;const ok=isRight(c,session.dir,val);
-    touchActivity();bumpCard(c,ok,session.dir);
+    touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
     if(ok){session.correct++;inp.disabled=true;saveResume();setTimeout(()=>nextTest(),350);return;}
     c.starred=true;inp.disabled=true;saveResume();
     // FIX 14/09: sai → hiện đáp án + 2 nút: "Tôi đã gõ đúng" (hoàn lại) / "Tiếp". Không tự nhảy câu.
