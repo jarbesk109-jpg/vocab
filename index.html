@@ -440,6 +440,30 @@ function setStatus(set,today){
   if(late<=2)  return {kind:kindNow,due:dueDate,stage:OFFSETS[set.stageIdx],late};
   return {kind:'broken',due:dueDate,late}; // gãy nhịp
 }
+/* FIX 16/09: vá dữ liệu cũ — deck đã học THUỘC trước Ngày 1 (code cũ không tính) → Ngày 1 = ngày học thật.
+   Bằng chứng: bài Kiểm tra đạt KPI trước Ngày 1, hoặc MỌI thẻ đều đã trả lời đúng trước Ngày 1. */
+function repairEarlyLearn(today){
+  today=today||todayStr();let n=0;
+  S.sets.forEach(set=>{
+    if(set.stageIdx!==0||set.lastCompleted||set.rescheduled||!set.cards.length)return;
+    let d=null;
+    (set.history||[]).forEach(h=>{ if(h.pct>=S.settings.kpi && h.date<set.anchor && (!d||h.date>d)) d=h.date; });
+    if(!d){
+      let all=true,mx=null;
+      set.cards.forEach(c=>{
+        const ds=['prod','recog'].map(k=>c.st&&c.st[k]).filter(x=>x&&x.r>0&&x.last&&x.last<set.anchor).map(x=>x.last);
+        if(!ds.length){all=false;return;}
+        ds.forEach(x=>{if(!mx||x>mx)mx=x;});
+      });
+      if(all)d=mx;
+    }
+    if(!d||d>=today)return;
+    if(dayDiff(today,addDays(d,1))>2)return; // quá trễ thì để luật gãy nhịp xử lý
+    set.anchor=d; set.stageIdx=1; set.lastCompleted=d; n++;
+  });
+  if(n)save();
+  return n;
+}
 // áp dụng xếp lại cho các set gãy nhịp; trả số set bị reset
 function applyReschedule(today){
   today=today||todayStr();let n=0;
@@ -677,6 +701,7 @@ function showView(v){
 /* ============================ HÔM NAY ============================ */
 function renderToday(){
   const t=todayStr();
+  repairEarlyLearn(t);
   const resc=applyReschedule(t);
   document.getElementById('dateLine').textContent=fmtFull(t)+' · Ngày thứ '+journeyDay()+' của hành trình';
   document.getElementById('streakN').textContent=currentStreak();
@@ -756,10 +781,13 @@ function renderToday(){
   document.getElementById('stBest').textContent=bestStreak();
 }
 function journeyDay(){
-  // FIX 16/09: mốc neo giờ có thể dời → lấy ngày học thật sớm nhất (activity) làm ngày khởi đầu
-  const days=S.sets.map(s=>s.anchor).concat(Object.keys(S.activity||{}).filter(k=>S.activity[k])).sort();
-  if(!days.length)return 1;
-  const start=days[0], t=todayStr();
+  // FIX 16/09: Ngày 1 giờ có thể dời → chốt ngày khởi đầu hành trình MỘT LẦN, không đổi nữa
+  if(!S.journeyStart){
+    const anchors=S.sets.map(s=>s.anchor).sort();
+    if(!anchors.length)return 1;
+    S.journeyStart=anchors[0]; save();
+  }
+  const start=S.journeyStart, t=todayStr();
   const d=dayDiff(t,start);return d<0?1:d+1;
 }
 window.quickStudy=function(id){document.getElementById('studySet').value=id;showView('study');document.getElementById('studySet').value=id;};
