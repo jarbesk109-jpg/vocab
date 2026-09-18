@@ -73,6 +73,12 @@
   .opt{padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel2);
     cursor:pointer;font-size:15px;font-weight:600;transition:.12s;text-align:left}
   .opt:hover{border-color:var(--accent)}
+  .opt[data-k]::before{content:attr(data-k);display:inline-block;min-width:19px;height:19px;
+    line-height:19px;text-align:center;margin-right:9px;border-radius:5px;background:var(--line);
+    color:var(--muted);font-size:11px;font-weight:800;vertical-align:1px}
+  .kbhint{color:var(--muted);font-size:12px;margin-top:10px;opacity:.75}
+  .kbhint kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-size:11px;font-weight:700;font-family:inherit}
   .opt.correct{background:#d8f3e2;border-color:var(--good)}
   .opt.wrong{background:#fbe0e0;border-color:var(--bad)}
   .prog{height:7px;background:var(--panel2);border-radius:999px;overflow:hidden;margin:10px 0}
@@ -285,6 +291,7 @@
       <div class="row" style="margin-bottom:4px"><button class="btn sm ghost" data-back>← Đổi chế độ</button><span class="tag" id="quizTitle"></span></div>
       <div class="prog"><i id="quizProg" style="width:0%"></i></div>
       <div id="quizBody"></div>
+      <div class="kbhint"><kbd>1</kbd>–<kbd>4</kbd> chọn đáp án · <kbd>Enter</kbd> nộp / đi tiếp · <kbd>\</kbd> tôi đã nhớ đúng · <kbd>Space</kbd> nghe lại</div>
     </div>
 
     <!-- Result -->
@@ -1124,7 +1131,7 @@ function drawLearnMCQ(st){
     <div class="opts" id="lo"></div>`;
   sayQ(c);
   const oc=document.getElementById('lo');
-  opts.forEach(o=>{const b=document.createElement('button');b.className='opt';b.textContent=o;
+  opts.forEach((o,ki)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.dataset.k=ki+1;
     b.onclick=()=>{const ok=norm(o)===norm(a);
       [...oc.children].forEach(x=>{x.style.pointerEvents='none';if(norm(x.textContent)===norm(a))x.classList.add('correct');});
       if(!ok)b.classList.add('wrong');
@@ -1142,12 +1149,12 @@ function drawLearnWrite(st){
   const inp=document.getElementById('lIn');inp.focus();
   const check=()=>{
     const ok=isRight(c,session.dir,inp.value);
-    const fb=document.getElementById('lFb');inp.disabled=true;document.getElementById('lChk').classList.add('hide');
+    const fb=document.getElementById('lFb');inp.disabled=true;inp.blur();document.getElementById('lChk').classList.add('hide');
     if(ok){fb.innerHTML='<span class="pill done">✓ Đúng — thuộc từ này!</span>';if(session.dir==='prod')speak(c.term);setTimeout(()=>learnDone(st,true),650);}
     else{const typed=inp.value.trim()||'(để trống)';if(session.dir==='prod')speak(c.term);
       fb.innerHTML=`<div class="banner b-bad" style="margin:0">✗ Bạn gõ: <b>${esc(typed)}</b> — chưa đúng.<br>✅ Đáp án đúng: <b style="font-size:19px">${esc(ans)}</b> &nbsp;<span class="tag">(từ này sẽ được lặp lại để nhớ)</span></div>`;
-      const nb=document.createElement('button');nb.className='btn sm';nb.textContent='Đã nhớ, tiếp →';nb.style.marginTop='10px';nb.onclick=()=>learnDone(st,false);fb.appendChild(nb);
-      const tb=document.createElement('button');tb.className='btn sm gray';tb.textContent='⌨️ Tôi gõ nhầm phím — tính đúng';tb.style.margin='10px 0 0 8px';
+      const nb=document.createElement('button');nb.className='btn sm';nb.id='lNext';nb.textContent='Đã nhớ, tiếp → (Enter)';nb.style.marginTop='10px';nb.onclick=()=>learnDone(st,false);fb.appendChild(nb);
+      const tb=document.createElement('button');tb.className='btn sm gray';tb.id='lOverride';tb.textContent='⌨️ Tôi gõ nhầm phím — tính đúng ( \\ )';tb.style.margin='10px 0 0 8px';
       tb.title='Chỉ dùng khi thật sự bấm nhầm phím. Nhớ mang máng mà bấm nút này là tự lừa mình.';
       tb.onclick=()=>{st._typo=true;learnDone(st,true);};fb.appendChild(tb);}
   };
@@ -1181,7 +1188,7 @@ function drawWrite(){
       if(matches(inp.value)){session.correct++;touchActivity();bumpCard(c,true,session.dir);saveResume();fb.innerHTML='<span class="pill done">✓ Đúng</span>';if(session.dir==='prod')speak(c.term);
         inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,600);}
       else{c.starred=true;touchActivity();bumpCard(c,false,session.dir);saveResume();retype=true;if(session.dir==='prod')speak(c.term);
-        fb.innerHTML=`<span class="pill broken">✗ Sai</span> &nbsp;Đáp án: <b>${esc(ans)}</b> <span class="tag">(đã gắn ⭐)</span> <button class="btn gray" id="wOverride" style="margin-left:6px">✔ Tôi đã gõ đúng</button><br><span class="tag">Gõ lại cho đúng để đi tiếp:</span>`;
+        fb.innerHTML=`<span class="pill broken">✗ Sai</span> &nbsp;Đáp án: <b>${esc(ans)}</b> <span class="tag">(đã gắn ⭐)</span> <button class="btn gray" id="wOverride" style="margin-left:6px">✔ Tôi đã gõ đúng ( \\ )</button><br><span class="tag">Gõ lại cho đúng để đi tiếp:</span>`;
         inp.value='';inp.focus();document.getElementById('wChk').textContent='Xác nhận';
         document.getElementById('wOverride').onclick=()=>{overrideRight(c,session.dir);session.correct++;saveResume();fb.innerHTML='<span class="pill done">✓ Tính là đúng</span>';inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,500);};}
     }else{
@@ -1241,8 +1248,8 @@ function drawTFTest(){
     <div class="opts" id="tfo"></div><div id="tFb" style="margin-top:8px"></div>`;
   sayQ(c);
   const oc=document.getElementById('tfo');
-  [['✓ Đúng',true],['✗ Sai',false]].forEach(([lab,val])=>{
-    const b=document.createElement('button');b.className='opt';b.textContent=lab;
+  [['✓ Đúng',true],['✗ Sai',false]].forEach(([lab,val],ki)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=lab;b.dataset.k=ki+1;
     b.onclick=()=>{
       const ok=(val===truth);
       [...oc.children].forEach(x=>x.style.pointerEvents='none');
@@ -1262,7 +1269,7 @@ function drawMCQTest(){
     <div class="flash" style="min-height:90px;cursor:default"><div class="big" style="font-size:22px">${esc(q)}</div></div><div class="opts" id="mo"></div>`;
   sayQ(c);
   const oc=document.getElementById('mo');
-  opts.forEach(o=>{const b=document.createElement('button');b.className='opt';b.textContent=o;
+  opts.forEach((o,ki)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.dataset.k=ki+1;
     b.onclick=()=>{const ok=norm(o)===norm(a);[...oc.children].forEach(x=>{x.style.pointerEvents='none';if(norm(x.textContent)===norm(a))x.classList.add('correct');});
       touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
       if(ok)session.correct++;else{b.classList.add('wrong');c.starred=true;}
@@ -1278,10 +1285,10 @@ function drawWriteTest(){
   const check=()=>{const val=inp.value;const ok=isRight(c,session.dir,val);
     touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
     if(ok){session.correct++;inp.disabled=true;saveResume();setTimeout(()=>nextTest(),350);return;}
-    c.starred=true;inp.disabled=true;saveResume();
+    c.starred=true;inp.disabled=true;inp.blur();saveResume();
     // FIX 14/09: sai → hiện đáp án + 2 nút: "Tôi đã gõ đúng" (hoàn lại) / "Tiếp". Không tự nhảy câu.
     document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án: <b>${esc(session.dir==='prod'?c.term:c.def)}</b>
-      <div class="row" style="margin-top:8px"><button class="btn gray" id="tOverride">✔ Tôi đã gõ đúng</button><button class="btn" id="tNext">Tiếp →</button></div>`;
+      <div class="row" style="margin-top:8px"><button class="btn gray" id="tOverride">✔ Tôi đã gõ đúng ( \\ )</button><button class="btn" id="tNext">Tiếp → (Enter)</button></div>`;
     document.getElementById('tOverride').onclick=()=>{overrideRight(c,session.dir);session.correct++;saveResume();nextTest();};
     document.getElementById('tNext').onclick=()=>nextTest();};
   document.getElementById('tChk').onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!inp.disabled)check();});
@@ -1444,6 +1451,59 @@ document.addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();flashFlipped=!flashFlipped;drawFlash();}
   if(e.code==='ArrowRight')document.getElementById('flashNext').click();
   if(e.code==='ArrowLeft')document.getElementById('flashPrev').click();
+});
+
+/* ===== BÀN PHÍM CHO PANE HỌC (thêm 18/09/2026) =====
+   1-4 chọn đáp án · Enter đi tiếp · \ = "tôi đã nhớ đúng" · Space nghe lại.
+   Mục tiêu: 2 tay ở yên trên bàn phím, không rời sang chuột. */
+function kbQuizOpen(){const q=document.getElementById('studyQuiz');return q&&!q.classList.contains('hide');}
+function kbOpts(){
+  for(const id of ['lo','mo','tfo']){
+    const el=document.getElementById(id);
+    if(el&&el.children.length)return [...el.children];
+  }
+  return null;
+}
+function kbFirstBtn(ids){
+  for(const id of ids){const b=document.getElementById(id);if(b&&!b.classList.contains('hide'))return b;}
+  return null;
+}
+function kbCard(){
+  if(!session)return null;
+  if(session.queue&&session.queue.length&&session.queue[0].card)return session.queue[0].card;
+  if(session.cards&&session.cards.length)return session.cards[session.i];
+  return null;
+}
+document.addEventListener('keydown',e=>{
+  if(!kbQuizOpen())return;
+  if(e.ctrlKey||e.altKey||e.metaKey)return;
+  const t=e.target,inField=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA');
+
+  /* \ — chạy được KỂ CẢ khi con trỏ đang nằm trong ô nhập (chế độ Viết bắt gõ lại) */
+  if(e.key==='\\'){
+    const ov=kbFirstBtn(['wOverride','tOverride','lOverride']);
+    if(ov){e.preventDefault();ov.click();}
+    return;
+  }
+  if(inField)return;   /* đang gõ đáp án thì để yên cho gõ */
+
+  if(e.key>='1'&&e.key<='4'){
+    const opts=kbOpts();
+    if(opts){
+      const b=opts[+e.key-1];
+      if(b&&b.style.pointerEvents!=='none'){e.preventDefault();b.click();}
+    }
+    return;
+  }
+  if(e.key==='Enter'){
+    const nx=kbFirstBtn(['lNext','tNext']);
+    if(nx){e.preventDefault();nx.click();}
+    return;
+  }
+  if(e.code==='Space'){
+    const c=kbCard();
+    if(c){e.preventDefault();speak(c.term);}
+  }
 });
 
 /* ============================ INIT ============================ */
