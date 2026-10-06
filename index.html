@@ -431,8 +431,9 @@ function findDupTerms(cards, skipSetId){
 }
 function setStatus(set,today){
   today=today||todayStr();
-  // set chưa tới ngày bắt đầu
-  if(dayDiff(set.anchor,today)>0){
+  // set chưa tới ngày bắt đầu (FIX 06/10: chỉ deck ở chặng 0 mới có "ngày bắt đầu";
+  // deck đã lên chặng mà neo ở tương lai là deck được dời lịch ôn, không phải deck mới)
+  if(set.stageIdx===0 && dayDiff(set.anchor,today)>0){
     return {kind:'future',due:set.anchor,label:'Bắt đầu '+fmt(set.anchor),days:dayDiff(set.anchor,today)};
   }
   // đã graduate hết chuỗi
@@ -471,17 +472,67 @@ function repairEarlyLearn(today){
   if(n)save();
   return n;
 }
-// áp dụng xếp lại cho các set gãy nhịp; trả số set bị reset
-function applyReschedule(today){
-  today=today||todayStr();let n=0;
+/* FIX 06/10: GÃY NHỊP KHÔNG CÒN RESET TIẾN ĐỘ.
+   Cũ: deck trễ >2 ngày → về Ngày 1, chạy lại +1/+3/+7. Gãy trước +7 là deck không bao giờ tới +7
+       (1608 ôn +1/+3 hơn 5 lần), và mọi deck gãy dồn hết vào hôm nay (196 thẻ).
+   Mới: (1) deck ĐÃ HỌC giữ nguyên chặng đã đạt, chỉ dời NGÀY ôn.
+        (2) rải ra các ngày tới: tối đa REV_PER_DAY deck ôn + NEW_PER_DAY deck mới mỗi ngày.
+        (3) deck yếu (chặng thấp) được ôn trước.
+        (4) lượt ôn đầu sau gãy là lượt "phục hồi": Kiểm tra đạt KPI → lên chặng; trượt → lùi 1 chặng (recordTest). */
+const REV_PER_DAY=3, NEW_PER_DAY=1;
+// đếm mỗi ngày đã có bao nhiêu deck chờ (bỏ qua các deck sắp được xếp lại)
+function dayLoads(today,skip){
+  const rev={},nw={};
   S.sets.forEach(set=>{
-    if(dayDiff(set.anchor,today)>0)return;
-    if(set.stageIdx>=OFFSETS.length)return;
+    if(skip.includes(set))return;
     const st=setStatus(set,today);
-    if(st.kind==='broken'){set.anchor=today;set.stageIdx=0;set.lastCompleted=null;set.rescheduled=true;n++;}
+    if(st.kind==='future')nw[st.due]=(nw[st.due]||0)+1;
+    else if(st.kind==='new')nw[today]=(nw[today]||0)+1;
+    else if(st.kind==='review')rev[today]=(rev[today]||0)+1;
+    else if(st.kind==='scheduled')rev[st.due]=(rev[st.due]||0)+1;
   });
-  if(n)save();
-  return n;
+  return {rev,nw};
+}
+// ngày sớm nhất từ hôm nay còn chỗ trống; giữ chỗ luôn
+function firstFree(load,cap,today){let d=today;while((load[d]||0)>=cap)d=addDays(d,1);load[d]=(load[d]||0)+1;return d;}
+// xếp lại 1 nhóm deck: deck đã học giữ chặng, deck chưa học xếp hàng làm deck mới
+function spreadDecks(list,today){
+  const L=dayLoads(today,list);
+  const studied=list.filter(daHoc).sort((a,b)=>a.stageIdx-b.stageIdx||(a.anchor<b.anchor?-1:1));
+  const fresh=list.filter(s=>!daHoc(s)).sort((a,b)=>a.anchor<b.anchor?-1:1);
+  studied.forEach(set=>{
+    const d=firstFree(L.rev,REV_PER_DAY,today);
+    set.anchor=addDays(d,-OFFSETS[set.stageIdx]);   // để ngày tới hạn của chặng hiện tại rơi đúng ngày d
+    set.recovering=true; set.rescheduled=true;
+  });
+  fresh.forEach(set=>{
+    set.anchor=firstFree(L.nw,NEW_PER_DAY,today); set.stageIdx=0; set.rescheduled=true;
+  });
+}
+// áp dụng xếp lại cho các set gãy nhịp; trả số set được xếp lại
+function applyReschedule(today){
+  today=today||todayStr();
+  const broken=S.sets.filter(set=>setStatus(set,today).kind==='broken');
+  if(!broken.length)return 0;
+  spreadDecks(broken,today); save();
+  return broken.length;
+}
+/* FIX 06/10 — VÁ 1 LẦN dữ liệu đã bị code cũ reset về chặng 0.
+   Không có nhật ký từng lượt ôn, nên phục hồi chặng từ bằng chứng còn lại:
+   số NGÀY KHÁC NHAU từng Kiểm tra đạt KPI (mỗi ngày đạt = 1 nấc thật), hoặc thuộc cả 2 chiều = ít nhất chặng +3.
+   Trần ở chặng +7: không tự cho "xong chu kỳ" — vẫn phải qua bài ôn phục hồi. */
+function restoreResetDecks(today){
+  if(S.fix0610)return 0;
+  today=today||todayStr();
+  // gồm cả deck CHƯA học bị reset dồn về cùng 1 ngày → rải lại mỗi ngày 1 deck mới
+  const hit=S.sets.filter(set=>set.stageIdx===0&&set.rescheduled&&set.lastCompleted!==today);
+  hit.filter(daHoc).forEach(set=>{
+    const passDays=new Set((set.history||[]).filter(h=>h.pct>=S.settings.kpi).map(h=>h.date)).size;
+    set.stageIdx=Math.min(3,Math.max(passDays,isMastered(set)?2:0));
+  });
+  if(hit.length)spreadDecks(hit,today);
+  S.fix0610=true; save();
+  return hit.length;
 }
 // hoàn thành 1 lượt học/ôn hôm nay cho set (đẩy chuỗi tiến 1 nấc)
 /* FIX 16/09: lịch neo theo NGÀY HỌC THẬT, không neo theo ngày xếp sẵn.
@@ -498,7 +549,7 @@ function advanceStage(set){
     set.stageIdx++;
   }
   else return false;
-  set.lastCompleted=today; set.rescheduled=false;
+  set.lastCompleted=today; set.rescheduled=false; set.recovering=false;
   return true;
 }
 function completeStudy(set){
@@ -510,6 +561,12 @@ function recordTest(set,pct){
   set.history.push({date:today,pct:Math.round(pct)});
   // đạt KPI: đẩy chuỗi nếu đang tới hạn hôm nay
   if(pct>=S.settings.kpi) advanceStage(set);
+  /* FIX 06/10: trượt bài ôn PHỤC HỒI (lượt đầu sau gãy) → lùi 1 chặng, không lùi về 0; ôn lại ngày mai */
+  else if(set.recovering && set.lastCompleted!==today && setStatus(set,today).kind==='review'){
+    if(set.stageIdx>=2) set.stageIdx--;
+    set.anchor=addDays(today,1-OFFSETS[set.stageIdx]);
+    set.lastCompleted=today; set.recovering=false;
+  }
   markActivity(); save();
 }
 function isMastered(set){ // THUỘC = mọi thẻ vững cả 2 chiều
@@ -584,15 +641,37 @@ function supaHeaders(extra){
 }
 function syncStatus(msg){ const e=document.getElementById('syncStatus'); if(e)e.innerHTML=msg; }
 
+/* FIX 06/10: CHỐNG MÁY CŨ GHI ĐÈ BẢN MỚI.
+   Cũ: mở app trên máy lâu không dùng → app tự sửa lịch → tự đẩy bản CŨ lên sau 3 giây → đè mất tiến độ máy kia.
+   Mới: mỗi máy nhớ "dấu thời gian của bản trên mây mà mình thấy lần cuối" (LASTSYNC_KEY).
+   Trước khi đẩy, hỏi mây: có ai đẩy bản mới hơn chưa? Có → tự động thì KHÔNG đẩy, bấm tay thì hỏi trước. */
+const LASTSYNC_KEY='vocabvip.lastsync';
+let startupPullDone=false;                           // chưa kiểm tra mây lúc mở app thì chưa tự đẩy
+async function cloudStamp(){
+  const r=await fetch(SUPA_URL+'/rest/v1/vocab_sync?id=eq.'+encodeURIComponent(syncCode())+'&select=updated_at',
+    {headers:supaHeaders()});
+  if(!r.ok)throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+  const rows=await r.json(); return rows.length?rows[0].updated_at:null;
+}
 async function pushCloud(silent){
   const code=syncCode(); if(!code)return false;
   if(syncBusy)return false; syncBusy=true;
   try{
-    const body=[{id:code,data:S,updated_at:new Date().toISOString()}];
+    const cloudAt=await cloudStamp(), seen=localStorage.getItem(LASTSYNC_KEY);
+    if(cloudAt && (!seen || new Date(cloudAt)>new Date(seen))){
+      if(silent){
+        syncStatus('⚠️ Trên mây có bản <b>mới hơn</b> (từ máy khác, lúc '+new Date(cloudAt).toLocaleString('vi-VN')+') → chưa tự đẩy để khỏi ghi đè. Bấm <b>Kéo về</b> để lấy bản đó, hoặc <b>Đẩy lên</b> nếu muốn bản máy này thắng.');
+        return false;
+      }
+      if(!confirm('🚨 Trên mây có bản MỚI HƠN bản máy này từng thấy (lưu lúc '+new Date(cloudAt).toLocaleString('vi-VN')+').\n\nĐẩy lên sẽ GHI ĐÈ bản đó. Vẫn đẩy?'))return false;
+    }
+    const stamp=new Date().toISOString();
+    const body=[{id:code,data:S,updated_at:stamp}];
     const r=await fetch(SUPA_URL+'/rest/v1/vocab_sync',{method:'POST',
       headers:supaHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
       body:JSON.stringify(body)});
     if(!r.ok)throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+    localStorage.setItem(LASTSYNC_KEY,stamp);
     localStorage.setItem('vocabvip.lastpush',new Date().toISOString());
     if(!silent)toast('☁️ Đã đẩy lên');
     syncStatus('✅ Đồng bộ: <b>'+code+'</b> · đẩy lên lúc '+new Date().toLocaleTimeString('vi-VN'));
@@ -603,7 +682,7 @@ async function pushCloud(silent){
     return false;
   }finally{syncBusy=false;}
 }
-function schedulePush(){ if(!syncCode())return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>pushCloud(true),3000); }
+function schedulePush(){ if(!syncCode()||!startupPullDone)return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>pushCloud(true),3000); }
 
 async function fetchCloud(){
   const code=syncCode(); if(!code)return null;
@@ -623,11 +702,12 @@ async function pullCloud(manual){
     if(!row.data||!Array.isArray(row.data.sets)){toast('Dữ liệu trên mây hỏng');return;}
     const nCloud=cardCount(row.data), nLocal=cardCount(S);
     const when=new Date(row.updated_at).toLocaleString('vi-VN');
-    if(!manual && JSON.stringify(row.data)===JSON.stringify(S)){ syncStatus('✅ Đồng bộ: <b>'+code+'</b> · đã khớp với đám mây'); return; }
+    if(!manual && JSON.stringify(row.data)===JSON.stringify(S)){ localStorage.setItem(LASTSYNC_KEY,row.updated_at); syncStatus('✅ Đồng bộ: <b>'+code+'</b> · đã khớp với đám mây'); return; }
     let msg='Kéo về bản trên mây?\n\nTrên mây: '+nCloud+' thẻ (lưu lúc '+when+')\nMáy này: '+nLocal+' thẻ\n\nDữ liệu máy này sẽ bị thay thế.';
     if(nCloud<nLocal)msg='🚨 Bản trên mây ÍT THẺ HƠN máy này.\n\n'+msg;
-    if(!confirm(msg))return;
+    if(!confirm(msg)){ syncStatus('ℹ️ Đang giữ bản máy này, chưa đồng bộ. Muốn bản này thắng thì bấm <b>Đẩy lên</b>.'); return; }
     localStorage.setItem(KEY+'.beforeimport',JSON.stringify(S));
+    localStorage.setItem(LASTSYNC_KEY,row.updated_at);
     S=row.data; save(); toast('☁️ Đã kéo về — sai thì bấm ↩️ Hoàn tác');
     syncStatus('✅ Đồng bộ: <b>'+code+'</b> · kéo về lúc '+new Date().toLocaleTimeString('vi-VN'));
     showView('today');
@@ -747,6 +827,7 @@ function showView(v){
 function renderToday(){
   const t=todayStr();
   repairEarlyLearn(t);
+  const restored=restoreResetDecks(t);
   const resc=applyReschedule(t);
   document.getElementById('dateLine').textContent=fmtFull(t)+' · Ngày thứ '+journeyDay()+' của hành trình';
   document.getElementById('streakN').textContent=currentStreak();
@@ -771,7 +852,8 @@ function renderToday(){
         <button class="btn sm gray" style="margin-top:8px" onclick="if(confirm('Bỏ phần đang học dở?')){clearResume();renderToday();}">Bỏ</button></div>`;
     }else{S.resume=null;}
   }
-  if(resc>0)bn.innerHTML+=`<div class="banner b-bad">⚠️ ${resc} học phần bị gãy nhịp (trễ >2 ngày) → đã tự xếp lại từ hôm nay, đúng luật cậu đề ra.</div>`;
+  if(restored>0)bn.innerHTML+=`<div class="banner b-warn">🛠️ Đã phục hồi chặng cho ${restored} học phần bị bản cũ reset nhầm về Ngày 1 (dựa trên số ngày Kiểm tra đạt KPI).</div>`;
+  if(resc>0)bn.innerHTML+=`<div class="banner b-bad">⚠️ ${resc} học phần trễ >2 ngày → <b>giữ nguyên chặng đã đạt</b>, rải ra các ngày tới (tối đa ${REV_PER_DAY} deck ôn + ${NEW_PER_DAY} deck mới/ngày). Lượt ôn đầu: Kiểm tra đạt KPI thì lên chặng, trượt thì lùi 1 chặng.</div>`;
 
   // FIX 13/09: nhắc xuất backup nếu quá 7 ngày (dữ liệu nằm trong trình duyệt, xoá cache là mất)
   (function(){
@@ -860,7 +942,7 @@ function renderSets(){
       return `<div class="setrow">
         <span class="nm">${esc(set.name)}</span>
         <span class="pill ${m.c}">${m.t}</span> ${stTxt}
-        <span class="meta">${set.cards.length} từ · Ngày 1: ${fmt(set.anchor)}</span>
+        <span class="meta">${set.cards.length} từ · ${set.stageIdx===0?'Ngày 1: '+fmt(set.anchor):'chặng kế: '+(OFFSETS[set.stageIdx]!=null?OFFLABEL[OFFSETS[set.stageIdx]]:'xong')}</span>
         <span class="sp">
           <button class="btn sm" onclick="quickStudy('${set.id}')">Học</button>
           <button class="btn sm gray" onclick="editSet('${set.id}')">Sửa</button>
@@ -1508,7 +1590,8 @@ document.addEventListener('keydown',e=>{
 
 /* ============================ INIT ============================ */
 showView('today');
-if(syncCode()){ syncStatus('⏳ Đang kiểm tra đám mây...'); pullCloud(false); }
+if(syncCode()){ syncStatus('⏳ Đang kiểm tra đám mây...'); pullCloud(false).finally(()=>{startupPullDone=true;}); }
+else startupPullDone=true;
 </script>
 </body>
 </html>
