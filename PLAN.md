@@ -443,7 +443,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
     - Test của `dates.js` theo mục 3.1.
   - Xong khi: `npm test` xanh; `git status` không có file JSON thật; commit trên nhánh `phase-1`.
 
-- [ ] **1.2 Logic hàng chờ Hôm nay** — [TDD] — cỡ 60 phút
+- [x] **1.2 Logic hàng chờ Hôm nay** — [TDD] — cỡ 60 phút
   - Mục tiêu: `deckStatus`, `startedDay`, `planToday`, `availableUnits` đúng mục 3.2.
   - File: `logic/schedule.js`, `tests/schedule.test.js`, `tests/fixtures/small.js`, `tests/migration.test.js` (thêm bảng 11/11, 12/11, 13/11 của mục 3.2).
   - Test viết trước: toàn bộ danh sách ở cuối mục 3.2.

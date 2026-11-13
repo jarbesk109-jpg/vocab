@@ -9,6 +9,7 @@ import {
   hasStudied,
   isDateStr,
   normalize,
+  planToday,
   studyDay,
   summarize,
 } from '../logic/index.js';
@@ -249,5 +250,47 @@ describe.skipIf(!hasFixture)('file JSON thật 11/11 (migration)', () => {
     const fresh = o.sets.filter((s) => !hasStudied(s)).sort((a, b) => (a.anchor < b.anchor ? -1 : a.anchor > b.anchor ? 1 : 0));
     expect(fresh.map((s) => s.name)).toEqual(['2208', '3108', '0209', '1109']);
     expect(fresh[0].name).toBe('2208');
+  });
+
+  // Bảng "Kết quả mong đợi với file JSON thật" của PLAN.md mục 3.2 (chưa học gì sau 10/10).
+  const names = (items) => items.map((x) => x.set.name);
+  const stageOf = (items) => items.map((x) => [x.set.name, x.status.stage]);
+
+  it('Hôm nay 11/11: ôn 2108 (+3), 1708 (+7), 2008 (+7); mới 2208; onTrack (khẳng định bắt buộc của HANDOVER.md)', () => {
+    const p = planToday(loadReal().sets, '2026-11-11');
+    expect(stageOf(p.reviews)).toEqual([['2108', 3], ['1708', 7], ['2008', 7]]);
+    expect(p.fresh.set.name).toBe('2208');
+    expect(p.more).toEqual([]);
+    expect(p.done).toEqual([]);
+    expect(p.gate).toEqual({ open: true, reason: 'onTrack', lateCount: 0, daysSinceNew: 34 });
+    expect(names(p.upcoming)).toEqual(['1608']);
+    expect(p.upcoming[0].status).toEqual({ kind: 'scheduled', due: '2026-11-12', days: 1 });
+    expect(names(p.stock)).toEqual(['3108', '0209', '1109']);
+  });
+
+  it('Hôm nay 12/11: ôn 2108, 1708, 2008; mới 2208; chờ thêm 1608; ceiling (3 deck trễ)', () => {
+    const p = planToday(loadReal().sets, '2026-11-12');
+    expect(names(p.reviews)).toEqual(['2108', '1708', '2008']);
+    expect(p.fresh.set.name).toBe('2208');
+    expect(names(p.more)).toEqual(['1608']);
+    expect(p.gate).toEqual({ open: true, reason: 'ceiling', lateCount: 3, daysSinceNew: 35 });
+    expect(p.upcoming).toEqual([]);
+    expect(names(p.stock)).toEqual(['3108', '0209', '1109']);
+  });
+
+  it('Hôm nay 13/11: ôn 2108, 1708, 2008; mới 2208; chờ thêm 1608; ceiling (4 deck trễ)', () => {
+    const p = planToday(loadReal().sets, '2026-11-13');
+    expect(names(p.reviews)).toEqual(['2108', '1708', '2008']);
+    expect(p.fresh.set.name).toBe('2208');
+    expect(names(p.more)).toEqual(['1608']);
+    expect(p.gate).toEqual({ open: true, reason: 'ceiling', lateCount: 4, daysSinceNew: 36 });
+    // cả bốn deck đã học đều mang cờ recovering → lượt ôn kế là lượt phục hồi
+    expect([...p.reviews, ...p.more].every((x) => x.status.recovery)).toBe(true);
+  });
+
+  it('planToday không sửa dữ liệu thật (không còn dời anchor)', () => {
+    const o = loadReal();
+    planToday(o.sets, '2026-11-13');
+    expect(o).toEqual(loadReal());
   });
 });

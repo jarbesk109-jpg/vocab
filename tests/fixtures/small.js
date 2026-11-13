@@ -67,3 +67,19 @@ export function mkState(sets = [], over = {}) {
     ...over,
   };
 }
+
+const OFFSETS = [0, 1, 3, 7, 16];
+const DAY_MS = 86400000;
+/** Cộng ngày trên chuỗi YYYY-MM-DD (bản riêng của fixture, không phụ thuộc logic/). */
+function shiftDay(day, n) {
+  return new Date(Date.parse(day + 'T00:00:00Z') + n * DAY_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Deck ôn: đang ở mốc `stageIdx` (1–4) và đến hạn đúng ngày `due`.
+ * `over.started` = ngày bắt đầu học (ghi vào `history` và `lastCompleted`, mặc định rất xa).
+ */
+export function mkReviewDeck(name, stageIdx, due, over = {}) {
+  const { started = '2026-01-01', ...rest } = over;
+  return mkStudiedDeck(name, started, { stageIdx, anchor: shiftDay(due, -OFFSETS[stageIdx]), ...rest });
+}
