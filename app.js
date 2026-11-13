@@ -291,6 +291,7 @@ async function pullCloud(manual){
     if(!confirm(msg)){ syncStatus('ℹ️ Đang giữ bản máy này, chưa đồng bộ. Muốn bản này thắng thì bấm <b>Đẩy lên</b>.'); return; }
     localStorage.setItem(KEY+'.beforeimport',JSON.stringify(S));
     localStorage.setItem(LASTSYNC_KEY,row.updated_at);
+    // FIX 11/11: dữ liệu kéo từ mây về cũng chạy qua normalize như mọi nguồn khác; hỏng thì báo, không nạp
     const nr=normalize(row.data); if(!nr){toast('Dữ liệu trên mây hỏng');return;}
     S=nr.data; save(); toast('☁️ Đã kéo về — sai thì bấm ↩️ Hoàn tác');
     syncStatus('✅ Đồng bộ: <b>'+code+'</b> · kéo về lúc '+new Date().toLocaleTimeString('vi-VN'));
