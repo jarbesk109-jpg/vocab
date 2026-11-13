@@ -186,3 +186,78 @@ export function availableUnits(sets, today, creditedIds) {
   }
   return waiting + (startedToday ? 0 : Math.min(1, stock));
 }
+
+/**
+ * Hôm nay đã học hết deck chưa (mục 3.3): deck có ít nhất 1 thẻ, và MỌI thẻ có ít nhất một chiều
+ * được trả lời đúng hôm nay (`last === today` và `streak >= 1`). Học theo mẻ nhỏ cộng dồn được.
+ * @param {any} set
+ * @param {string} today
+ * @returns {boolean}
+ */
+export function learnedToday(set, today) {
+  const cards = set.cards || [];
+  if (!cards.length) return false;
+  return cards.every((c) => {
+    const st = (c && c.st) || {};
+    return ['prod', 'recog'].some((k) => st[k] && st[k].last === today && st[k].streak >= 1);
+  });
+}
+
+/**
+ * Áp kết quả một phiên học lên deck: luật lên mốc phương án (c), mục 3.3.
+ * Deck mới xong Ngày 1 qua Học/Viết đủ thẻ (hoặc Kiểm tra đạt KPI); deck ôn chỉ lên mốc qua
+ * Kiểm tra đủ bài đạt KPI. Mỗi deck tối đa 1 mốc và 1 lượt mỗi ngày. Flashcard không tính gì.
+ * Hàm thuần: trả về bản sao đã sửa, không sửa `set`.
+ * @param {any} set
+ * @param {{mode: 'flash' | 'learn' | 'write' | 'test', pct: number, full: boolean}} result
+ *   `full = true`: bài Kiểm tra đủ thẻ × 2 chiều
+ * @param {string} today
+ * @param {number} kpi % đạt
+ * @returns {{set: any, advanced: boolean, dropped: boolean, credit: boolean, stageFrom: number, stageTo: number}}
+ *   `credit`: phiên này được tính là một LƯỢT cho streak
+ */
+export function applySessionResult(set, { mode, pct, full }, today, kpi) {
+  const status = deckStatus(set, today); // tính TRƯỚC mọi thay đổi
+  const stageFrom = set.stageIdx || 0;
+  const out = { ...set, history: [...(set.history || [])] };
+  const res = { set: out, advanced: false, dropped: false, credit: false, stageFrom, stageTo: stageFrom };
+  const fullTest = mode === 'test' && full === true;
+
+  if (fullTest) out.history.push({ date: today, pct: Math.round(pct), mode: 'test', stage: stageFrom });
+  if (mode === 'flash') return res;
+  if (set.lastCompleted === today) return res; // mỗi deck tối đa 1 mốc và 1 lượt mỗi ngày
+
+  const isNew = status.kind === 'stock' || (status.kind === 'waiting' && stageFrom === 0);
+  if (isNew) {
+    const complete = (fullTest && pct >= kpi) || ((mode === 'learn' || mode === 'write') && learnedToday(set, today));
+    res.credit = complete || fullTest;
+    if (complete) {
+      out.anchor = today;
+      out.stageIdx = 1;
+      out.lastCompleted = today;
+      out.startedAt = today;
+      out.rescheduled = false;
+      out.recovering = false;
+      res.advanced = true;
+    }
+  } else if (status.kind === 'waiting' && fullTest) {
+    res.credit = true; // làm xong bài là tính lượt, không cần đạt KPI
+    if (pct >= kpi) {
+      out.anchor = addDays(set.anchor, status.late);
+      out.stageIdx = stageFrom + 1;
+      out.lastCompleted = today;
+      out.rescheduled = false;
+      out.recovering = false;
+      res.advanced = true;
+    } else if (status.recovery) {
+      out.stageIdx = Math.max(1, stageFrom - 1);
+      out.anchor = addDays(today, 1 - OFFSETS[out.stageIdx]); // đến hạn ngày mai
+      out.lastCompleted = today;
+      out.recovering = false;
+      res.dropped = out.stageIdx !== stageFrom;
+    }
+  }
+  // deck 'scheduled' / 'graduated': học thêm vô hại, không đổi mốc, không tính lượt
+  res.stageTo = out.stageIdx || 0;
+  return res;
+}

@@ -484,7 +484,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
   - Test viết trước: toàn bộ danh sách cuối mục 3.4 và 3.5.
   - Xong khi: `npm test` xanh.
 
-- [ ] **1.5 Logic lên mốc (c)** — [TDD] — cỡ 60 phút
+- [x] **1.5 Logic lên mốc (c)** — [TDD] — cỡ 60 phút
   - Mục tiêu: `learnedToday`, `applySessionResult` đúng mục 3.3.
   - File: `logic/schedule.js`, `tests/stage.test.js`.
   - Test viết trước: toàn bộ danh sách cuối mục 3.3.
