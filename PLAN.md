@@ -490,7 +490,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
   - Test viết trước: toàn bộ danh sách cuối mục 3.3.
   - Xong khi: `npm test` xanh.
 
-- [ ] **1.6 Nối streak, nhịp và luật lên mốc vào v1** — [UI] — cỡ 75 phút
+- [x] **1.6 Nối streak, nhịp và luật lên mốc vào v1** — [UI] — cỡ 75 phút
   - Mục tiêu: v1 chạy theo luật mới từ đầu tới cuối.
   - Các bước (trong `app.js`):
     1. Thêm một hàm `finishSession(set, mode, pct)`: gọi `Logic.applySessionResult(set, { mode, pct, full: mode === 'test' }, todayStr(), S.settings.kpi)`, chép kết quả vào `set` (`Object.assign`), nếu `credit` thì `S.activity = Logic.creditSession(…)`, rồi `save()`. Trả về kết quả để màn Kết quả dùng.
@@ -722,6 +722,15 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13 → 
 - Màn Học phần: deck `stageIdx 0` đã học dở hiện "Đang học dở" (task chỉ liệt kê 4 nhãn, không có nhãn cho trường hợp này).
 - "Lấy từ hôm nay" ở tab Dịch đoạn văn = thẻ của `reviews` + `fresh` (không gồm `more`, `stock`, deck đã xong).
 - Tiêu chí tay: người thực thi chạy bằng Chrome headless (nhập file thật qua đúng nút Nhập backup, ngày học 13/11): Hôm nay ra `2108`, `1708`, `2008` + mới `2208`, chờ thêm `1608`, kho `3108`, `0209`, `1109`, dòng cổng `ceiling`; 5 tab mở được; tải lại không đổi thứ tự, `S.sets` bằng đúng file JSON; "Học thêm" deck kho vào được màn Học. Console không có lỗi JavaScript; chỉ có 404 `favicon.ico` (có từ trước, trang chưa bao giờ có favicon).
+
+**Task 1.6 (13/11)**
+- **Khang xem lại:** đã xoá thêm `repairEarlyLearn` (bản vá 16/09, không nằm trong danh sách xoá của task). Lý do: nó tự đưa deck `stageIdx 0` lên mốc 1 khi mọi thẻ từng đúng trước `anchor`, tức là một đường lên mốc khác với mục 3.3 (ví dụ deck kho làm Kiểm tra trượt hôm nay thì hôm sau tự lên mốc 1, trái với "deck kho + Kiểm tra trượt → không đổi mốc"). Mục 3 ghi "chỗ nào mục này nói khác v1 thì mục này thắng". Với file thật hàm này không làm gì. Nếu Khang muốn giữ thì báo, khôi phục từ Git được.
+- Cũng xoá `finishQuiz` (code chết, chỉ gọi `completeStudy`), `dayCount`, `addAnswer`, `dayFull`, `DAY_FULL` (cách đếm ngày cũ, không còn ai dùng).
+- Đổi thứ tự ở 6 chỗ chấm bài: `bumpCard` trước rồi mới `touchActivity`, để `avail` tính SAU khi deck đã cập nhật (mục 3.4).
+- **Quan sát, chưa đổi luật:** deck mới học dở (`stageIdx 0`, đã có câu trả lời) tính `late` theo `anchor` cũ đúng như mục 3.2. Ví dụ `2208` (`anchor` 11/11) học 7 thẻ ngày 13/11 thì hiện "HỌC TIẾP · trễ 2d" và được đếm vào số deck trễ, nên dòng cổng đổi thành "đang có 5 deck ôn trễ (hơn 4)". Không ảnh hưởng thứ tự (deck học dở luôn đứng đầu) nhưng chữ hơi lạ. Nếu Khang muốn deck học dở không tính trễ thì cần sửa mục 3.2.
+- Banner nhắc xuất backup 7 ngày của v1 vẫn còn (task không yêu cầu bỏ; "không nhắc nhở" là quyết định cho v2). `seed()` của v1 vẫn KPI 80.
+- `index.html`: thêm chỗ cho dòng trạng thái streak và "🧊 băng" ở header; 3 chỉnh CSS nhỏ để dòng deck không vỡ chữ ở 375px (`.pill`, `.setrow .meta` không xuống dòng giữa chữ, `.setrow` cho phép xuống hàng).
+- Màn Kết quả luôn nói rõ: lên mốc / lùi mốc / chưa đạt KPI / còn N thẻ / deck đã xong lượt hôm nay / deck chưa đến hạn, kèm một dòng streak.
 
 ---
 

@@ -109,86 +109,57 @@ function findDupTerms(cards, skipSetId){
   (cards||[]).forEach(c=>{const k=norm(c.term); if(k&&owner[k]&&!seen.has(k)){seen.add(k);out.push({term:c.term,deck:owner[k]});}});
   return out;
 }
-function setStatus(set,today){
-  today=today||todayStr();
-  // set chưa tới ngày bắt đầu (FIX 06/10: chỉ deck ở chặng 0 mới có "ngày bắt đầu";
-  // deck đã lên chặng mà neo ở tương lai là deck được dời lịch ôn, không phải deck mới)
-  if(set.stageIdx===0 && dayDiff(set.anchor,today)>0){
-    return {kind:'future',due:set.anchor,label:'Bắt đầu '+fmt(set.anchor),days:dayDiff(set.anchor,today)};
-  }
-  // đã graduate hết chuỗi
-  if(set.stageIdx>=OFFSETS.length){
-    return {kind:'graduated',label:'Xong chu kỳ ôn'};
-  }
-  const dueDate=addDays(set.anchor,OFFSETS[set.stageIdx]);
-  const late=dayDiff(today,dueDate); // >0 = trễ mấy ngày
-  if(late<0) return {kind:'scheduled',due:dueDate,label:'Ôn '+fmt(dueDate),days:-late};
-  const kindNow=(set.stageIdx===0 && !daHoc(set))?'new':'review';
-  if(late===0) return {kind:kindNow,due:dueDate,stage:OFFSETS[set.stageIdx]};
-  if(late<=2)  return {kind:kindNow,due:dueDate,stage:OFFSETS[set.stageIdx],late};
-  return {kind:'broken',due:dueDate,late}; // gãy nhịp
-}
-/* FIX 16/09: vá dữ liệu cũ — deck đã học THUỘC trước Ngày 1 (code cũ không tính) → Ngày 1 = ngày học thật.
-   Bằng chứng: bài Kiểm tra đạt KPI trước Ngày 1, hoặc MỌI thẻ đều đã trả lời đúng trước Ngày 1. */
-function repairEarlyLearn(today){
-  today=today||todayStr();let n=0;
-  S.sets.forEach(set=>{
-    if(set.stageIdx!==0||set.lastCompleted||set.rescheduled||!set.cards.length)return;
-    let d=null;
-    (set.history||[]).forEach(h=>{ if(h.pct>=S.settings.kpi && h.date<set.anchor && (!d||h.date>d)) d=h.date; });
-    if(!d){
-      let all=true,mx=null;
-      set.cards.forEach(c=>{
-        const ds=['prod','recog'].map(k=>c.st&&c.st[k]).filter(x=>x&&x.r>0&&x.last&&x.last<set.anchor).map(x=>x.last);
-        if(!ds.length){all=false;return;}
-        ds.forEach(x=>{if(!mx||x>mx)mx=x;});
-      });
-      if(all)d=mx;
-    }
-    if(!d||d>=today)return;
-    if(dayDiff(today,addDays(d,1))>2)return; // quá trễ thì để luật gãy nhịp xử lý
-    set.anchor=d; set.stageIdx=1; set.lastCompleted=d; n++;
-  });
-  if(n)save();
-  return n;
-}
 /* P1.3: KHÔNG CÒN DỜI NGÀY ÔN. Mỗi deck giữ ngày đến hạn thật; màn Hôm nay chỉ CHỌN tối đa
    3 deck ôn + 1 deck mới theo thứ tự ưu tiên (Logic.planToday, PLAN.md mục 3.2).
    Đã xoá: dayLoads, firstFree, spreadDecks, applyReschedule, restoreResetDecks. */
-// hoàn thành 1 lượt học/ôn hôm nay cho set (đẩy chuỗi tiến 1 nấc)
-/* FIX 16/09: lịch neo theo NGÀY HỌC THẬT, không neo theo ngày xếp sẵn.
-   (1) Mỗi deck chỉ tiến TỐI ĐA 1 nấc/ngày — Học + Kiểm tra cùng ngày = 1 lượt, không nhảy cóc qua +1.
-   (2) Làm trễ L ngày → dời mốc neo L ngày → chặng sau tính từ hôm thật sự ôn.
-   (3) Học deck chưa tới ngày → Ngày 1 = hôm nay (học 2 deck/ngày được). */
-function advanceStage(set){
-  const today=todayStr();
-  if(set.lastCompleted===today) return false;
-  const st=setStatus(set,today);
-  if(st.kind==='future'){ set.anchor=today; set.stageIdx=1; }
-  else if(st.kind==='new'||st.kind==='review'){
-    if(st.late) set.anchor=addDays(set.anchor,st.late);
-    set.stageIdx++;
+/* P1.6: LÊN MỐC theo phương án (c), toàn bộ luật nằm trong Logic.applySessionResult (PLAN.md mục 3.3):
+   deck mới xong Ngày 1 khi Học/Viết đúng đủ mọi thẻ trong ngày (hoặc Kiểm tra đạt KPI);
+   deck ôn chỉ lên mốc khi Kiểm tra đủ bài đạt KPI; mỗi deck tối đa 1 mốc + 1 lượt mỗi ngày; flashcard không tính.
+   Đã xoá: setStatus, advanceStage, completeStudy, recordTest, markActivity, repairEarlyLearn. */
+function finishSession(set,mode,pct){
+  const t=todayStr();
+  const before=Logic.deckStatus(set,t), wasDone=set.lastCompleted===t;
+  const res=Logic.applySessionResult(set,{mode,pct,full:mode==='test'},t,S.settings.kpi);
+  Object.assign(set,res.set);
+  if(res.credit){
+    const d=creditedToday(); if(!d.includes(set.id))d.push(set.id);
+    S.activity=Logic.creditSession(S.activity,t,set.id,Logic.availableUnits(S.sets,t,d));
   }
-  else return false;
-  set.lastCompleted=today; set.rescheduled=false; set.recovering=false;
-  return true;
+  save();
+  res.before=before; res.wasDone=wasDone;
+  return res;
 }
-function completeStudy(set){
-  advanceStage(set);
-  markActivity(); save();
+// các deck đã tính lượt hôm nay (bản sao)
+function creditedToday(){const r=S.activity[todayStr()];return (r&&Array.isArray(r.d))?r.d.slice():[];}
+function stageName(i){return i>=OFFSETS.length?'xong chu kỳ':(i===0?'Mới':'+'+OFFSETS[i]);}
+// số thẻ hôm nay chưa đúng lần nào (chiều nào cũng được)
+function notLearnedToday(set){
+  const t=todayStr();
+  return set.cards.filter(c=>!['prod','recog'].some(k=>c.st&&c.st[k]&&c.st[k].last===t&&c.st[k].streak>=1)).length;
 }
-function recordTest(set,pct){
-  const today=todayStr();
-  set.history.push({date:today,pct:Math.round(pct)});
-  // đạt KPI: đẩy chuỗi nếu đang tới hạn hôm nay
-  if(pct>=S.settings.kpi) advanceStage(set);
-  /* FIX 06/10: trượt bài ôn PHỤC HỒI (lượt đầu sau gãy) → lùi 1 chặng, không lùi về 0; ôn lại ngày mai */
-  else if(set.recovering && set.lastCompleted!==today && setStatus(set,today).kind==='review'){
-    if(set.stageIdx>=2) set.stageIdx--;
-    set.anchor=addDays(today,1-OFFSETS[set.stageIdx]);
-    set.lastCompleted=today; set.recovering=false;
-  }
-  markActivity(); save();
+// chữ ở màn Kết quả: nói đúng chuyện gì đã xảy ra với mốc và streak
+function sessionSummary(set,res,mode,pct){
+  const t=todayStr(), kpi=S.settings.kpi, b=res.before, now=Logic.deckStatus(set,t);
+  const isNew=b.kind==='stock'||(b.kind==='waiting'&&res.stageFrom===0);
+  const next=now.kind==='scheduled'?' Lần ôn kế: '+fmt(now.due)+'.':'';
+  let m;
+  if(mode==='flash') m='Lật thẻ là để làm quen: không tính lượt, không đổi mốc.';
+  else if(res.wasDone) m='Deck này đã xong lượt hôm nay rồi, nên lần này không đổi mốc (mỗi deck tối đa 1 mốc mỗi ngày).';
+  else if(res.advanced) m=res.stageTo>=OFFSETS.length?'🎓 <b>Lên mốc: xong cả chu kỳ ôn</b> của deck này.'
+    :(res.stageFrom===0?'✅ <b>Xong Ngày 1</b> của deck. Mốc kế: +1.'+next
+      :'⬆️ <b>Lên mốc</b> '+stageName(res.stageFrom)+' → '+stageName(res.stageTo)+'.'+next);
+  else if(res.dropped) m='⬇️ Chưa đạt KPI ở lượt phục hồi: <b>lùi mốc</b> '+stageName(res.stageFrom)+' → '+stageName(res.stageTo)+', ôn lại ngày mai.';
+  else if(isNew) m=mode==='test'?'Chưa đạt KPI '+kpi+'% nên chưa xong Ngày 1. Học hết deck (mọi thẻ đúng ít nhất 1 lần trong ngày) hoặc Kiểm tra lại cho đạt.'
+    :'Còn <b>'+notLearnedToday(set)+' thẻ</b> chưa đúng lần nào hôm nay, học tiếp để xong Ngày 1.';
+  else if(b.kind==='waiting'&&mode==='test') m=set.lastCompleted===t?'Chưa đạt KPI ở lượt phục hồi: giữ mốc '+stageName(res.stageTo)+' (không lùi dưới +1), ôn lại ngày mai.'
+    :'<b>Chưa đạt KPI '+kpi+'% nên chưa lên mốc.</b> Deck vẫn nằm trong hàng chờ, thi lại lúc nào cũng được.';
+  else if(b.kind==='waiting') m='Deck ôn chỉ lên mốc khi làm <b>Kiểm tra</b> đạt KPI '+kpi+'%. Lần này là luyện thêm, không đổi mốc.';
+  else m='Deck chưa đến hạn ôn nên không đổi mốc'+(mode==='test'?' (điểm vẫn ghi vào lịch sử).':'.');
+  const st=paintStreak();
+  const sl=res.credit?(st.status==='safe'?'🔥 Lượt này được tính: streak hôm nay đã tính ('+st.count+' ngày).'
+      :'Lượt này được tính cho streak, còn thiếu '+st.needUnits+' lượt nữa để tính hôm nay.')
+    :(st.status==='safe'?'':'Streak hôm nay: còn thiếu '+st.needUnits+' lượt.');
+  return m+(sl?'<br>'+sl:'');
 }
 function isMastered(set){ // THUỘC = mọi thẻ vững cả 2 chiều
   return set.cards.length>0 && set.cards.every(cardKnown);
@@ -200,15 +171,6 @@ function masteryLabel(set){
   return {t:`${m.pct}% · V→A ${m.prod}% · A→V ${m.recog}%`,c:'rev'};
 }
 
-/* streak */
-const DAY_FULL=20;                                  // ≥20 thẻ = ngày đủ
-function markActivity(){const t=todayStr();if(!S.activity[t])S.activity[t]=true;}
-function dayCount(d){const v=S.activity[d];return v===true?DAY_FULL:(v&&v.n)||0;}
-function addAnswer(){
-  const t=todayStr(), v=S.activity[t];
-  S.activity[t]=(v===true)?{n:DAY_FULL+1}:{n:((v&&v.n)||0)+1};
-}
-function dayFull(d){return dayCount(d)>=DAY_FULL;}
 /* ---- THỐNG KÊ TỪNG THẺ: thuộc = trả lời đúng 2 lần liên tiếp ---- */
 /* Mỗi thẻ có hồ sơ RIÊNG cho từng chiều: prod = Việt→Anh, recog = Anh→Việt */
 function cst(c,dir){
@@ -338,20 +300,31 @@ async function pullCloud(manual){
     if(manual)toast('Kéo về lỗi');
   }
 }
-/* Lượt học được ghi nhận NGAY TỪ CÂU TRẢ LỜI ĐẦU TIÊN, không đợi xong bài */
-function touchActivity(){ markActivity(); addAnswer(); save(); }
-function currentStreak(){
-  let n=0,d=todayStr();
-  if(!S.activity[d])d=addDays(d,-1); // chưa học hôm nay thì tính tới hôm qua
-  while(S.activity[d]){n++;d=addDays(d,-1);}
-  return n;
+/* P1.6: mỗi CÂU TRẢ LỜI được ghi ngay vào activity (Logic.recordAnswer). Gọi SAU khi đã chấm thẻ (bumpCard).
+   Lật flashcard không phải là câu. Streak: toàn bộ luật nằm trong Logic.computeStreak (PLAN.md mục 3.4). */
+function touchActivity(){
+  const t=todayStr();
+  S.activity=Logic.recordAnswer(S.activity,t,session.set.id,Logic.availableUnits(S.sets,t,creditedToday()));
+  save();
 }
-function bestStreak(){
-  const days=Object.keys(S.activity).filter(k=>S.activity[k]).sort();
-  let best=0,run=0,prev=null;
-  days.forEach(d=>{run=(prev&&dayDiff(d,prev)===1)?run+1:1;best=Math.max(best,run);prev=d;});
-  return best;
+function streakNow(){return Logic.computeStreak(S.activity,(S.streak&&S.streak.freezeUsedDays)||[],todayStr());}
+function freezeUsedToday(){return ((S.streak&&S.streak.freezeUsedDays)||[]).includes(todayStr());}
+// vẽ số streak + dòng trạng thái ở header; trả về kết quả computeStreak
+function paintStreak(){
+  const st=streakNow(), n=st.needUnits;
+  document.getElementById('streakN').textContent=st.count;
+  const txt=st.status==='safe'?'🔥 hôm nay đã tính'
+    :(st.status==='atRisk'?'⚠️ đang nguy · ':'')+'còn thiếu '+n+' lượt để tính hôm nay';
+  document.getElementById('todayCnt').textContent=txt;
+  document.getElementById('freezeN').classList.toggle('hide',st.freezes<1);
+  document.getElementById('freezeN').textContent='🧊 '+st.freezes+' băng';
+  return st;
 }
+window.useFreezeToday=function(){
+  S.streak=S.streak||{};
+  S.streak.freezeUsedDays=Logic.useFreeze(S.streak.freezeUsedDays,todayStr());
+  save(); renderToday(); toast('Đã dùng băng: cần 1 lượt hôm nay');
+};
 
 /* ============================ HELPERS ============================ */
 const VNDAY=['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
@@ -449,18 +422,17 @@ function showView(v){
 /* ============================ HÔM NAY ============================ */
 function renderToday(){
   const t=todayStr();
-  repairEarlyLearn(t);
   document.getElementById('dateLine').textContent=fmtFull(t)+' · Ngày thứ '+journeyDay()+' của hành trình';
-  document.getElementById('streakN').textContent=currentStreak();
-  (function(){
-    const t=todayStr(), n=dayCount(t), el=document.getElementById('streakN');
-    const box=el.parentElement, old=document.getElementById('todayCnt');
-    const txt = n>=DAY_FULL ? `🔥 hôm nay ${n} thẻ` : (n>0?`▪️ hôm nay ${n}/${DAY_FULL} thẻ — ngày sàn`:`⬜ hôm nay chưa học thẻ nào`);
-    if(old)old.textContent=txt;
-    else{const s=document.createElement('span');s.id='todayCnt';s.className='muted small';s.style.marginLeft='8px';s.textContent=txt;box.appendChild(s);}
-  })();
+  const SK=paintStreak();
 
   const bn=document.getElementById('todayBanners');bn.innerHTML='';
+  if(SK.status==='atRisk'){
+    const usedF=freezeUsedToday()&&SK.freezes>0;
+    bn.innerHTML+=`<div class="banner b-bad" id="riskBanner">${usedF
+      ?'🧊 <b>Đã dùng băng: cần 1 lượt hôm nay</b> để giữ streak '+SK.count+' ngày.'
+      :'🚨 <b>Streak đang nguy: hôm qua lỡ.</b> Hôm nay cần 2 lượt (thiếu deck thì 20 câu thay 1 lượt).'}
+      Còn thiếu <b>${SK.needUnits} lượt</b>.${(!usedF&&SK.freezes>0)?'<br><button class="btn sm" style="margin-top:8px" onclick="useFreezeToday()">🧊 Dùng băng</button> <span class="tag">dùng băng thì hôm nay chỉ cần 1 lượt</span>':''}</div>`;
+  }
   if(S.resume){
     const rs=setById(S.resume.setId);
     if(rs){
@@ -506,6 +478,9 @@ function renderToday(){
   if(P.fresh)h+=row(P.fresh,{});
   if(!h)h='<p class="muted">Hôm nay không có học phần nào tới hạn. Rảnh thì tạo deck mới hoặc luyện dịch đoạn văn nhé!</p>';
   if(GATE[G.reason])h+=`<p class="small muted" id="gateLine" style="margin:10px 0 0">${GATE[G.reason]}.</p>`;
+  const PC=Logic.paceInfo(S.activity,t), vn=x=>String(x).replace('.',',');
+  h+=`<p class="small muted" id="paceLine" style="margin:6px 0 0">${PC.pace===null?'Chưa đủ dữ liệu để tính nhịp (cần 3 ngày).'
+    :'Nhịp hiện tại '+vn(PC.pace)+' lượt/ngày → '+(PC.everyDays?'từ mới cứ '+PC.everyDays+' ngày một lần':'chưa có lượt nào trong 7 ngày qua')+'. Làm thêm 1 lượt/ngày → '+PC.everyDaysPlus1+' ngày một lần.'}</p>`;
   h+=fold('Đang chờ thêm',P.more);
   h+=fold('Kho deck mới',P.stock);
   document.getElementById('todayPlan').innerHTML=h;
@@ -514,7 +489,7 @@ function renderToday(){
   document.getElementById('stMastered').textContent=S.sets.filter(isMastered).length;
   document.getElementById('stLearning').textContent=S.sets.filter(s=>!isMastered(s)&&(s.lastCompleted||s.history.length)).length;
   document.getElementById('stTotalCards').textContent=S.sets.reduce((a,s)=>a+s.cards.length,0);
-  document.getElementById('stBest').textContent=bestStreak();
+  document.getElementById('stBest').textContent=SK.best;
 }
 /* P1.3: nhãn hiển thị của một deck theo Logic.deckStatus (dùng ở Hôm nay và Học phần) */
 function deckLabel(st){
@@ -772,9 +747,9 @@ function drawFlash(){
 document.getElementById('flashCard').onclick=()=>{flashFlipped=!flashFlipped;drawFlash();};
 document.getElementById('flashFlip').onclick=e=>{e.stopPropagation();flashFlipped=!flashFlipped;drawFlash();};
 document.getElementById('flashSpeak').onclick=e=>{e.stopPropagation();const c=session.cards[session.i];speak(c.term);};
-document.getElementById('flashNext').onclick=e=>{e.stopPropagation();touchActivity();if(session.i<session.cards.length-1){session.i++;flashFlipped=false;saveResume();drawFlash();}else finishFlash();};
+document.getElementById('flashNext').onclick=e=>{e.stopPropagation();if(session.i<session.cards.length-1){session.i++;flashFlipped=false;saveResume();drawFlash();}else finishFlash();};
 document.getElementById('flashPrev').onclick=e=>{e.stopPropagation();if(session.i>0){session.i--;flashFlipped=false;drawFlash();}};
-function finishFlash(){clearResume();completeStudy(session.set);showResult('Đã xem hết thẻ 🃏',`Xong ${session.cards.length} thẻ. Lượt học hôm nay đã được ghi nhận.`,false);}
+function finishFlash(){clearResume();showResult('Đã xem hết thẻ 🃏',`Xong ${session.cards.length} thẻ. `+sessionSummary(session.set,{before:Logic.deckStatus(session.set,todayStr()),credit:false},'flash',0),false);}
 
 /* ---- Học: Trắc nghiệm + Tự luận (trắc nghiệm trước, tự luận sau) ---- */
 function askAnswer(card,dir){ return dir==='prod'?{q:card.def,a:card.term}:{q:card.term,a:card.def}; }
@@ -786,7 +761,11 @@ function startLearn(){
   if(s.learnWrite)session.steps.push('write');
   if(!session.steps.length)session.steps=['write'];
   let pool=shuffle(session.set.cards);
-  if(s.learnBatch>0)pool=pool.slice(0,s.learnBatch);
+  if(s.learnBatch>0&&s.learnBatch<pool.length){
+    // P1.6: mẻ nhỏ hơn deck → thẻ CHƯA đúng lần nào hôm nay lên trước, để các mẻ cộng dồn phủ hết deck
+    const t=todayStr(), ok=c=>['prod','recog'].some(k=>c.st&&c.st[k]&&c.st[k].last===t&&c.st[k].streak>=1);
+    pool=pool.filter(c=>!ok(c)).concat(pool.filter(ok)).slice(0,s.learnBatch);
+  }
   session.queue=pool.map(c=>({card:c,got:0}));
   session.total=session.queue.length;session.mastered=0;session.tries=0;session.wrongs=0;
   document.getElementById('quizTitle').textContent='Học · '+session.set.name+' · '+session.total+' thẻ';
@@ -803,7 +782,7 @@ function drawLearnNext(){
 }
 // Mỗi từ cần đúng 2 lần (trắc nghiệm → tự luận) = THUỘC. Sai → reset + đẩy lại hàng đợi (lặp nhiều hơn).
 function learnDone(st,correct){
-  touchActivity(); bumpCard(st.card,correct,session.dir,st._typo);
+  bumpCard(st.card,correct,session.dir,st._typo); touchActivity();
   session.tries++;session.queue.shift();
   if(correct){
     st.got++;
@@ -855,15 +834,17 @@ function drawLearnWrite(st){
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!inp.disabled)check();});
 }
 function finishLearn(){
-  clearResume();completeStudy(session.set);
+  clearResume();
   const acc=session.tries?Math.round((session.tries-session.wrongs)/session.tries*100):100;
-  showResult('Học xong 🎯',`Đã thuộc toàn bộ <b>${session.total} từ</b>! Tổng ${session.tries} lượt trả lời · độ chính xác ${acc}%. Lượt học đã ghi nhận. Muốn tính "thuộc" chính thức thì làm <b>Kiểm tra</b> đạt KPI ${S.settings.kpi}%.`,true);
+  const res=finishSession(session.set,'learn',acc);
+  showResult('Học xong mẻ này 🎯',`Đã đúng đủ bước cho <b>${session.total} từ</b> · ${session.tries} lượt trả lời · độ chính xác ${acc}%.<br>`+sessionSummary(session.set,res,'learn',acc),res.advanced);
 }
 /* ---- Viết (sai phải gõ lại ĐÚNG mới đi tiếp) ---- */
 function startWrite(){showStudyPane('quiz');document.getElementById('quizTitle').textContent='Viết · '+session.set.name;session.i=0;session.correct=0;session.cards=shuffle(session.set.cards);drawWrite();}
 function nextWrite(){if(session.i<session.cards.length-1){session.i++;drawWrite();}else finishWrite();}
-function finishWrite(){const pct=session.cards.length?session.correct/session.cards.length*100:0;clearResume();completeStudy(session.set);
-  showResult('Viết xong ⌨️',`Đúng ngay lần đầu ${session.correct}/${session.cards.length} (${Math.round(pct)}%). Lượt học đã ghi nhận. Từ nào sai đã gắn ⭐ để ôn lại.`,pct>=S.settings.kpi);}
+function finishWrite(){const pct=session.cards.length?session.correct/session.cards.length*100:0;clearResume();
+  const res=finishSession(session.set,'write',pct);
+  showResult('Viết xong ⌨️',`Đúng ngay lần đầu ${session.correct}/${session.cards.length} (${Math.round(pct)}%). Từ nào sai đã gắn ⭐ để ôn lại.<br>`+sessionSummary(session.set,res,'write',pct),pct>=S.settings.kpi);}
 function drawWrite(){
   const c=session.cards[session.i];const {q}=askAnswer(c,session.dir);setProg(session.i/session.cards.length);sayQ(c);
   const ans=session.dir==='prod'?c.term:c.def;
@@ -878,9 +859,9 @@ function drawWrite(){
   const check=()=>{
     const fb=document.getElementById('wFb');
     if(!retype){
-      if(matches(inp.value)){session.correct++;touchActivity();bumpCard(c,true,session.dir);saveResume();fb.innerHTML='<span class="pill done">✓ Đúng</span>';if(session.dir==='prod')speak(c.term);
+      if(matches(inp.value)){session.correct++;bumpCard(c,true,session.dir);touchActivity();saveResume();fb.innerHTML='<span class="pill done">✓ Đúng</span>';if(session.dir==='prod')speak(c.term);
         inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,600);}
-      else{c.starred=true;touchActivity();bumpCard(c,false,session.dir);saveResume();retype=true;if(session.dir==='prod')speak(c.term);
+      else{c.starred=true;bumpCard(c,false,session.dir);touchActivity();saveResume();retype=true;if(session.dir==='prod')speak(c.term);
         fb.innerHTML=`<span class="pill broken">✗ Sai</span> &nbsp;Đáp án: <b>${esc(ans)}</b> <span class="tag">(đã gắn ⭐)</span> <button class="btn gray" id="wOverride" style="margin-left:6px">✔ Tôi đã gõ đúng ( \\ )</button><br><span class="tag">Gõ lại cho đúng để đi tiếp:</span>`;
         inp.value='';inp.focus();document.getElementById('wChk').textContent='Xác nhận';
         document.getElementById('wOverride').onclick=()=>{overrideRight(c,session.dir);session.correct++;saveResume();fb.innerHTML='<span class="pill done">✓ Tính là đúng</span>';inp.disabled=true;document.getElementById('wChk').classList.add('hide');setTimeout(nextWrite,500);};}
@@ -946,7 +927,7 @@ function drawTFTest(){
     b.onclick=()=>{
       const ok=(val===truth);
       [...oc.children].forEach(x=>x.style.pointerEvents='none');
-      touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
+      bumpCard(c,ok,session.dir);touchActivity();if(session.dir==='prod')speak(c.term);
       if(ok){session.correct++;b.classList.add('correct');}
       else{b.classList.add('wrong');c.starred=true;
         document.getElementById('tFb').innerHTML=`<span class="pill broken">✗</span> Đáp án đúng của "${esc(q)}" là: <b>${esc(a)}</b>`;}
@@ -964,7 +945,7 @@ function drawMCQTest(){
   const oc=document.getElementById('mo');
   opts.forEach((o,ki)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.dataset.k=ki+1;
     b.onclick=()=>{const ok=norm(o)===norm(a);[...oc.children].forEach(x=>{x.style.pointerEvents='none';if(norm(x.textContent)===norm(a))x.classList.add('correct');});
-      touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
+      bumpCard(c,ok,session.dir);touchActivity();if(session.dir==='prod')speak(c.term);
       if(ok)session.correct++;else{b.classList.add('wrong');c.starred=true;}
       saveResume();setTimeout(()=>nextTest(),ok?450:850);};oc.appendChild(b);});
 }
@@ -976,7 +957,7 @@ function drawWriteTest(){
     <div class="row" style="margin-top:12px"><input id="tIn" placeholder="Gõ đáp án..." autocomplete="off" style="flex:1"><button class="btn" id="tChk">OK</button></div><div id="tFb" style="margin-top:8px"></div>`;
   const inp=document.getElementById('tIn');inp.focus();sayQ(c);
   const check=()=>{const val=inp.value;const ok=isRight(c,session.dir,val);
-    touchActivity();bumpCard(c,ok,session.dir);if(session.dir==='prod')speak(c.term);
+    bumpCard(c,ok,session.dir);touchActivity();if(session.dir==='prod')speak(c.term);
     if(ok){session.correct++;inp.disabled=true;saveResume();setTimeout(()=>nextTest(),350);return;}
     c.starred=true;inp.disabled=true;inp.blur();saveResume();
     // FIX 14/09: sai → hiện đáp án + 2 nút: "Tôi đã gõ đúng" (hoàn lại) / "Tiếp". Không tự nhảy câu.
@@ -987,18 +968,14 @@ function drawWriteTest(){
   document.getElementById('tChk').onclick=check;inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!inp.disabled)check();});
 }
 function nextTest(){if(session.i<session.cards.length-1){session.i++;drawTestItem();}else{
-  const pct=session.correct/session.cards.length*100;clearResume();recordTest(session.set,pct);save();
+  const pct=session.correct/session.cards.length*100;clearResume();
+  const res=finishSession(session.set,'test',pct);
   const pass=pct>=S.settings.kpi;
   showResult((pass?'🎉 Đạt KPI!':'Chưa đạt KPI')+' — '+Math.round(pct)+'%',
-    `Đúng ${session.correct}/${session.cards.length}. KPI = ${S.settings.kpi}%. `+
-    (pass?'Học phần này được ghi nhận <b>THUỘC</b> và chuỗi ôn tiến 1 nấc. 🔥':'Chưa tính là thuộc — ôn thêm rồi kiểm tra lại nhé, sát lắm rồi.'),
+    `Đúng ${session.correct}/${session.cards.length}. KPI = ${S.settings.kpi}%.<br>`+sessionSummary(session.set,res,'test',pct),
     pass);
 }}
 function setProg(f){document.getElementById('quizProg').style.width=Math.round(f*100)+'%';}
-function finishQuiz(label){
-  const pct=session.correct/session.cards.length*100;completeStudy(session.set);
-  showResult(label+' xong',`Đúng ${session.correct}/${session.cards.length} (${Math.round(pct)}%). Lượt học đã ghi nhận. Muốn tính "thuộc" thì làm <b>Kiểm tra</b> đạt KPI ${S.settings.kpi}%.`,pct>=S.settings.kpi);
-}
 function showResult(title,html,good){
   showStudyPane('result');document.getElementById('resTitle').textContent=title;
   document.getElementById('resBody').innerHTML=`<div class="banner ${good?'b-good':'b-warn'}">${html}</div>`;
