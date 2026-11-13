@@ -505,7 +505,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
   - Tiêu chí tay: xem Phụ lục B.
   - Xong khi: tiêu chí tay đạt, `npm test` xanh.
 
-- [ ] **1.7 Chuẩn bị bàn giao cho Khang rồi DỪNG** — cỡ 20 phút
+- [x] **1.7 Chuẩn bị bàn giao cho Khang rồi DỪNG** — cỡ 20 phút
   - Rà Phụ lục B một lượt trên Chrome laptop và ở bề rộng điện thoại (DevTools). Ghi kết quả vào mục 9.
   - Báo Khang: Phase 1 xong, chưa push. Khang cần (a) mở trang thật hiện tại → Cài đặt → Xuất backup và giữ file; (b) tự thử theo Phụ lục B; (c) trả lời đồng ý.
   - KHÔNG push.
@@ -731,6 +731,34 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13 → 
 - Banner nhắc xuất backup 7 ngày của v1 vẫn còn (task không yêu cầu bỏ; "không nhắc nhở" là quyết định cho v2). `seed()` của v1 vẫn KPI 80.
 - `index.html`: thêm chỗ cho dòng trạng thái streak và "🧊 băng" ở header; 3 chỉnh CSS nhỏ để dòng deck không vỡ chữ ở 375px (`.pill`, `.setrow .meta` không xuống dòng giữa chữ, `.setrow` cho phép xuống hàng).
 - Màn Kết quả luôn nói rõ: lên mốc / lùi mốc / chưa đạt KPI / còn N thẻ / deck đã xong lượt hôm nay / deck chưa đến hạn, kèm một dòng streak.
+
+**Task 1.7 (13/11): kết quả rà Phụ lục B**
+
+Cách rà: người thực thi điều khiển Chrome headless (không phải Khang bấm tay), mở `http://127.0.0.1:5173`, nhập file JSON thật qua đúng nút Nhập backup, KHÔNG nhập mã đồng bộ, ngày học 13/11. Mỗi câu hỏi được trả lời qua giao diện thật (bấm đáp án, gõ ô nhập). Rà ở cửa sổ 1100px và ở bề rộng điện thoại 375px. Chưa rà trên điện thoại thật và chưa nghe thử tiếng: phần đó Khang thử.
+
+| # | Mục | Kết quả |
+|---|---|---|
+| 1 | Console không lỗi; 5 tab mở được | Đạt. Không có lỗi JavaScript. Chỉ có 404 `favicon.ico` (có từ trước). |
+| 2 | Hôm nay tối đa 4 deck, thứ tự, dòng giải thích | Đạt: `2108` (+3, trễ 2d), `1708`, `2008` (+7, trễ 2d), mới `2208`; dòng "Đã quá 3 ngày chưa có deck mới nên mở 1 deck mới dù còn bài ôn". |
+| 3 | Hai mục gập, nút "Học thêm" | Đạt: "Đang chờ thêm (1)" = `1608`; "Kho deck mới (3)" = `3108`, `0209`, `1109`. |
+| 4 | Lật hết flashcard deck đang chờ | Đạt: deck và `activity` hôm nay không đổi gì. |
+| 5 | Học hết một deck mới | Đạt: `2208` thành "✓ xong hôm nay", mốc 1, `anchor = startedAt = 13/11`, ôn kế 14/11, streak 0 → 1. |
+| 6 | Học mẻ 7 thẻ của deck 25 thẻ | Đạt: deck chưa xong, Kết quả ghi "Còn 18 thẻ chưa đúng lần nào hôm nay". Học tiếp 3 mẻ 7 nữa (18 → 11 → 4 → 0) thì xong Ngày 1. |
+| 7 | Kiểm tra deck ôn, đạt KPI | Đạt: `2108` +3 → +7, `anchor` dời 2 ngày (08/11 → 10/11), ôn kế 17/11, rời danh sách chờ, streak được tính. |
+| 8 | Kiểm tra deck ôn, cố tình trượt | Đạt: `1708` (đang phục hồi) lùi +7 → +3, hẹn 14/11; `2008` (bỏ cờ phục hồi để thử) đứng yên trong hàng chờ; cả hai đều tính lượt. |
+
+Thử thêm ngoài checklist:
+- Thi lại deck đã xong hôm nay: không đổi mốc, chỉ thêm một dòng lịch sử.
+- Tải lại trang sau khi học: Hôm nay giữ nguyên, các trường mới (`startedAt`, `history[].mode/stage`, `activity[day].by/d/a`) còn đủ.
+- Streak đang nguy (dữ liệu giả 21 ngày rồi lỡ hôm qua): banner đỏ + nút "Dùng băng"; bấm xong đổi thành "Đã dùng băng: cần 1 lượt hôm nay"; làm 1 lượt thì streak 21 → 22, hết băng. Không băng: làm 2 lượt thì 5 → 6.
+- Dòng nhịp học: "Chưa đủ dữ liệu để tính nhịp (cần 3 ngày)" với file thật; với dữ liệu giả ra "Nhịp hiện tại 0,9 lượt/ngày → từ mới cứ 6 ngày một lần. Làm thêm 1 lượt/ngày → 3 ngày một lần."
+- 375px: không tràn ngang ở Hôm nay, Học phần, Học, Cài đặt.
+
+**Việc của Khang trước task 1.8 (CHƯA push):**
+1. Mở trang thật hiện tại → Cài đặt → Xuất backup, giữ file.
+2. Tự thử theo Phụ lục B ở máy (`python -m http.server 5173 --bind 127.0.0.1` trong thư mục `vocab`).
+3. Xem 3 chỗ người thực thi tự quyết ở trên: 2 dòng `pullCloud` không có nhãn `FIX 11/11` (task 1.1); xoá `restoreResetDecks` (1.3) và `repairEarlyLearn` (1.6); deck học dở hiện "trễ Nd" (1.6).
+4. Trả lời đồng ý thì mới làm task 1.8 (push một lần).
 
 ---
 
