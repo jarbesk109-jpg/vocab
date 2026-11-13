@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   OFFSETS,
   addDays,
+  computeStreak,
   dayDiff,
   emptyState,
   hasStudied,
@@ -291,6 +292,14 @@ describe.skipIf(!hasFixture)('file JSON thật 11/11 (migration)', () => {
   it('planToday không sửa dữ liệu thật (không còn dời anchor)', () => {
     const o = loadReal();
     planToday(o.sets, '2026-11-13');
+    expect(o).toEqual(loadReal());
+  });
+
+  it('streak ngày 13/11: 0 ngày, dài nhất 5, không băng, chưa học hôm nay (mục 3.4)', () => {
+    const o = loadReal();
+    expect(computeStreak(o.activity, o.streak?.freezeUsedDays ?? [], '2026-11-13')).toEqual({
+      count: 0, best: 5, freezes: 0, status: 'pending', needUnits: 1,
+    });
     expect(o).toEqual(loadReal());
   });
 });

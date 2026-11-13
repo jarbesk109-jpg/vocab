@@ -478,7 +478,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
     - Bấm "Học thêm" ở một deck trong kho: vào được màn Học.
   - Xong khi: tiêu chí tay đạt, `npm test` xanh.
 
-- [ ] **1.4 Logic streak và nhịp học** — [TDD] — cỡ 75 phút
+- [x] **1.4 Logic streak và nhịp học** — [TDD] — cỡ 75 phút
   - Mục tiêu: `logic/streak.js` đúng mục 3.4, `logic/pace.js` đúng mục 3.5.
   - File: `logic/streak.js`, `logic/pace.js`, `logic/index.js`, `tests/streak.test.js`, `tests/pace.test.js`, `tests/migration.test.js` (thêm kết quả streak 13/11).
   - Test viết trước: toàn bộ danh sách cuối mục 3.4 và 3.5.
