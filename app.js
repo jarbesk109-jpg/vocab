@@ -457,8 +457,8 @@ function renderToday(){
   // P1.3: kế hoạch = hàng chờ (tối đa 3 ôn + 1 mới, không dời lịch)
   const P=Logic.planToday(S.sets,t), G=P.gate;
   const GATE={
-    late:'Deck mới tạm dừng: còn '+G.lateCount+' deck ôn trễ',
-    valve:'Deck mới tạm dừng: đang có '+G.lateCount+' deck ôn trễ (hơn 4)',
+    late:'Deck mới tạm dừng: còn '+G.lateCount+' deck trễ',
+    valve:'Deck mới tạm dừng: đang có '+G.lateCount+' deck trễ (hơn 4)',
     ceiling:'Đã quá 3 ngày chưa có deck mới nên mở 1 deck mới dù còn bài ôn',
     doneNew:'Hôm nay đã học 1 deck mới',
     emptyStock:'Kho deck mới đã hết, tạo deck mới để mai có từ học'

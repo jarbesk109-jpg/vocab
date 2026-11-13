@@ -7,6 +7,7 @@ import {
   RECOVERY_LATE,
   REV_PER_DAY,
   addDays,
+  applySessionResult,
   availableUnits,
   deckStatus,
   planToday,
@@ -239,6 +240,37 @@ describe('planToday: cổng deck mới và số ô ôn', () => {
     expect(p.gate).toEqual({ open: true, reason: 'ceiling', lateCount: 1, daysSinceNew: null });
     expect(names(p.reviews)).toEqual(['h']);
     expect(p.fresh.set.name).toBe('k');
+  });
+
+  // Khang chốt 13/11: deck mới ĐÃ HỌC DỞ còn tính là trễ (theo anchor) cho tới khi xong Ngày 1 theo luật (c).
+  it('deck mới học dở tính vào số deck trễ như deck ôn; deck kho chưa đụng tới thì không', () => {
+    const sets = [
+      halfDeck('h', { anchor: day(-2) }),
+      rev('a', 2, 1), rev('b', 3, 1), rev('c', 3, 2), rev('d', 4, 1),
+      stockDeck('k', { anchor: day(-9) }),
+    ];
+    const p = planToday(sets, T);
+    expect(p.gate).toMatchObject({ open: false, reason: 'valve', lateCount: 5 });
+    expect(names(p.reviews)[0]).toBe('h');
+    expect(p.reviews[0].status).toMatchObject({ kind: 'waiting', stage: 0, late: 2 });
+    // bỏ deck học dở đi thì chỉ còn 4 deck trễ: van không đóng
+    expect(planToday(sets.slice(1), T).gate).toMatchObject({ open: true, reason: 'ceiling', lateCount: 4 });
+  });
+
+  it('deck mới học dở hết tính trễ ngay khi xong Ngày 1 (Học đủ thẻ trong ngày)', () => {
+    const h = mkStudiedDeck('h', T, { lastCompleted: null, history: [], anchor: day(-2) });
+    expect(deckStatus(h, T)).toMatchObject({ kind: 'waiting', stage: 0, late: 2 });
+    expect(planToday([h], T).gate.lateCount).toBe(1);
+    const half = applySessionResult(halfDeck('x', { anchor: day(-2) }), { mode: 'learn', pct: 100, full: false }, T, 90);
+    expect(half.advanced).toBe(false);
+    expect(planToday([half.set], T).gate.lateCount).toBe(1); // học chưa đủ thẻ: vẫn trễ
+    const done = applySessionResult(h, { mode: 'learn', pct: 100, full: false }, T, 90);
+    expect(done.advanced).toBe(true);
+    const p = planToday([done.set], T);
+    expect(p.gate.lateCount).toBe(0);
+    expect(names(p.done)).toEqual(['h']);
+    expect(p.done[0].status).toEqual({ kind: 'scheduled', due: day(1), days: 1 });
+    expect(planToday([done.set], day(1)).gate.lateCount).toBe(0); // hôm sau đến hạn +1, đúng hạn
   });
 
   it('không trễ nhưng quá 3 deck ôn, vừa có deck mới gần đây → đóng, reason full, reviews có 4', () => {

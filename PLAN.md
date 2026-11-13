@@ -466,7 +466,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
        (`app.js` là classic script nên các hàm vẫn là biến toàn cục, các `onclick="…"` trong HTML vẫn chạy.)
     3. Trong `app.js`: `todayStr()` không tham số trả về `Logic.studyDay(Date.now())`; `addDays`, `dayDiff` gọi sang `Logic`. Xoá `spreadDecks`, `dayLoads`, `firstFree`, `applyReschedule` và lời gọi trong `renderToday`. CHƯA xoá `setStatus`, `advanceStage` (task 1.6 mới thay).
     4. `renderToday` dùng `Logic.planToday(S.sets, todayStr())`: các deck `done` (✓ xong hôm nay), `reviews`, `fresh`; bên dưới hai mục gập `<details>`: "Đang chờ thêm (n)" = `more`, "Kho deck mới (n)" = `stock`, mỗi dòng có nút "Học thêm". Nhãn: deck mới `HỌC MỚI`; deck ôn `ÔN +N`; có `late` thì thêm `· trễ Nd`; `stage 0` đã học dở `HỌC TIẾP`.
-    5. Một dòng giải thích cổng deck mới theo `gate.reason`: `late` "Deck mới tạm dừng: còn N deck ôn trễ"; `valve` "Deck mới tạm dừng: đang có N deck ôn trễ (hơn 4)"; `ceiling` "Đã quá 3 ngày chưa có deck mới nên mở 1 deck mới dù còn bài ôn"; `doneNew` "Hôm nay đã học 1 deck mới"; `emptyStock` "Kho deck mới đã hết, tạo deck mới để mai có từ học"; `full`, `onTrack`: không hiện gì.
+    5. Một dòng giải thích cổng deck mới theo `gate.reason`: `late` "Deck mới tạm dừng: còn N deck trễ"; `valve` "Deck mới tạm dừng: đang có N deck trễ (hơn 4)"; `ceiling` "Đã quá 3 ngày chưa có deck mới nên mở 1 deck mới dù còn bài ôn"; `doneNew` "Hôm nay đã học 1 deck mới"; `emptyStock` "Kho deck mới đã hết, tạo deck mới để mai có từ học"; `full`, `onTrack`: không hiện gì.
     6. Bỏ hai banner "chưa có học phần MỚI cho ngày mai/ngày kia" (đã thay bằng dòng `emptyStock`).
     7. Màn Học phần và `allCardsToday` dùng `deckStatus`/`planToday` thay cho `setStatus` ở phần HIỂN THỊ (`stock` "Trong kho", `waiting` "Đang chờ ôn +N", `scheduled` "Ôn dd/mm", `graduated` "Xong chu kỳ").
     8. Sửa đoạn chữ "Về lịch ôn" trong Cài đặt cho đúng luật mới (giữ mốc, tối đa 3 ôn + 1 mới mỗi ngày).
@@ -759,6 +759,12 @@ Thử thêm ngoài checklist:
 2. Tự thử theo Phụ lục B ở máy (`python -m http.server 5173 --bind 127.0.0.1` trong thư mục `vocab`).
 3. Xem 3 chỗ người thực thi tự quyết ở trên: 2 dòng `pullCloud` không có nhãn `FIX 11/11` (task 1.1); xoá `restoreResetDecks` (1.3) và `repairEarlyLearn` (1.6); deck học dở hiện "trễ Nd" (1.6).
 4. Trả lời đồng ý thì mới làm task 1.8 (push một lần).
+
+**Khang duyệt (13/11, sau task 1.7)**
+- Deck mới ĐÃ HỌC DỞ còn tính là trễ (theo `anchor`) cho tới khi xong Ngày 1 theo luật (c): giữ đúng mục 3.2, không đổi luật. Đã thêm 2 test khoá hành vi này trong `tests/schedule.test.js`. Vì số deck trễ có thể gồm deck mới học dở, chữ dòng cổng đổi từ "deck ôn trễ" thành "deck trễ".
+- Giữ 2 dòng `normalize` trong `pullCloud`, đã gắn nhãn `FIX 11/11`.
+- Đồng ý xoá `restoreResetDecks` và `repairEarlyLearn`.
+- Đồng ý push (task 1.8).
 
 ---
 
