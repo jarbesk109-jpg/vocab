@@ -1,0 +1,16 @@
+{
+  "name": "vocab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Recall — app học từ vựng (v1 đã vá + logic/ có test)",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
+}

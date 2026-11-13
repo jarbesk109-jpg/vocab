@@ -388,6 +388,11 @@
 const OFFSETS=[0,1,3,7,16];               // ngày ôn kể từ Ngày 1
 const OFFLABEL={0:'Mới',1:'+1',3:'+3',7:'+7',16:'+16'};
 const KEY='vocabvip.v1';
+/* FIX 11/11 → 13/11: ảnh chụp dữ liệu đã GỠ khỏi code (repo public, dữ liệu thật không nằm trong repo).
+   SNAPSHOT = null → trình duyệt CHƯA có dữ liệu thì load() rơi về app trống (seed()).
+   Khôi phục dữ liệu bằng Cài đặt → Nhập backup hoặc đồng bộ. Xóa sạch & làm lại vẫn ra trống thật. */
+const SNAPSHOT_DATE='2026-11-11';
+const SNAPSHOT=null;
 let S=load();
 
 function todayStr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -400,8 +405,68 @@ function seed(){
   /* FIX 13/09: bỏ 5 deck nhét cứng. Xoá sạch phải ra SẠCH THẬT, không tự đắp lại deck cũ. */
   return {"projects":[{"id":"trl80kl","name":"IELTS Vocab"}],"sets":[],"activity":{},"settings":{"kpi":80,"testN":20},"currentProj":"trl80kl","paragraphs":[]};
 }
+/* FIX 11/11: chuẩn hoá dữ liệu từ MỌI nguồn (localStorage, file backup, đám mây).
+   Chỉ ĐẮP phần còn thiếu, không đụng phần đã có → chạy lại bao nhiêu lần cũng ra cùng kết quả.
+   Trả về danh sách những gì đã vá (để báo cho người dùng biết). */
+function isDateStr(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);}
+function normalize(o){
+  const fixes=[], d=seed();
+  if(!o||typeof o!=='object'||!Array.isArray(o.sets)) return null;
+  if(!Array.isArray(o.projects)||!o.projects.length){o.projects=d.projects;fixes.push('thiếu danh sách dự án');}
+  if(!o.projects.some(p=>p&&p.id===o.currentProj)) o.currentProj=o.projects[0].id;
+  if(!o.settings||typeof o.settings!=='object'){o.settings={};fixes.push('thiếu cài đặt');}
+  o.settings={...d.settings,...o.settings};
+  if(!o.activity||typeof o.activity!=='object'||Array.isArray(o.activity)) o.activity={};
+  if(!Array.isArray(o.paragraphs)) o.paragraphs=[];
+  const projIds=new Set(o.projects.map(p=>p.id)), setIds=new Set();
+  let badSets=0;
+  o.sets=o.sets.filter(s=>{ if(s&&typeof s==='object'&&Array.isArray(s.cards))return true; badSets++; return false; });
+  if(badSets) fixes.push('bỏ '+badSets+' học phần hỏng (không có thẻ)');
+  o.sets.forEach(s=>{
+    if(!s.id||setIds.has(s.id)){s.id=uid();fixes.push('đổi id trùng/thiếu của "'+(s.name||'?')+'"');}
+    setIds.add(s.id);
+    if(typeof s.name!=='string'||!s.name) s.name='(không tên)';
+    if(!isDateStr(s.anchor)){s.anchor=todayStr();fixes.push('"'+s.name+'" thiếu ngày bắt đầu → đặt hôm nay');}
+    if(typeof s.stageIdx!=='number'||s.stageIdx<0) s.stageIdx=0;
+    if(!Array.isArray(s.history)) s.history=[];
+    if(!projIds.has(s.projectId)) s.projectId=o.currentProj;
+    if(!isDateStr(s.createdAt)) s.createdAt=s.anchor;
+    if(s.lastCompleted===undefined) s.lastCompleted=null;
+    s.cards=s.cards.filter(c=>c&&typeof c==='object');
+    s.cards.forEach(c=>{
+      if(!c.id) c.id=uid();
+      if(typeof c.term!=='string') c.term=String(c.term??'');
+      if(typeof c.def!=='string') c.def=String(c.def??'');
+      if(typeof c.note!=='string') c.note='';
+      if(!c.st||typeof c.st!=='object') c.st={};
+    });
+  });
+  return {data:o,fixes};
+}
+/* Tóm tắt 1 bản dữ liệu để SO SÁNH độ mới: số thẻ, tổng lượt trả lời, ngày học gần nhất.
+   Số thẻ bằng nhau KHÔNG có nghĩa là cùng tiến độ — phải nhìn lượt trả lời + ngày học. */
+function summarize(o){
+  let cards=0, answers=0, last='';
+  const bump=x=>{ if(isDateStr(x)&&x>last) last=x; };
+  (o.sets||[]).forEach(s=>{
+    (s.history||[]).forEach(h=>bump(h&&h.date));
+    bump(s.lastCompleted);
+    (s.cards||[]).forEach(c=>{ cards++;
+      ['prod','recog'].forEach(k=>{const x=c&&c.st&&c.st[k]; if(x){answers+=(x.r||0)+(x.w||0); bump(x.last);} });
+    });
+  });
+  Object.keys(o.activity||{}).forEach(bump);
+  return {sets:(o.sets||[]).length,cards,answers,last};
+}
+function summaryLine(m){return m.sets+' deck · '+m.cards+' thẻ · '+m.answers+' lượt trả lời · học gần nhất '+(m.last?fmtFull(m.last):'(chưa học)');}
+
 function load(){
-  try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.sets)return o;}}catch(e){}
+  let raw=null;
+  try{raw=localStorage.getItem(KEY);if(raw){const n=normalize(JSON.parse(raw));if(n)return n.data;}}catch(e){}
+  // FIX 11/11: dữ liệu cũ hỏng thì CẤT LẠI trước khi thay bằng bản trống, không ghi đè mất luôn
+  if(raw){try{localStorage.setItem(KEY+'.corrupt',raw);}catch(e){}}
+  // máy mới / chưa có dữ liệu → nạp ảnh chụp có sẵn trong file
+  if(!raw){try{const n=normalize(JSON.parse(JSON.stringify(SNAPSHOT)));if(n){localStorage.setItem(KEY,JSON.stringify(n.data));return n.data;}}catch(e){}}
   const s=seed();try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}return s;
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Không lưu được (bộ nhớ đầy?)');}
@@ -708,7 +773,8 @@ async function pullCloud(manual){
     if(!confirm(msg)){ syncStatus('ℹ️ Đang giữ bản máy này, chưa đồng bộ. Muốn bản này thắng thì bấm <b>Đẩy lên</b>.'); return; }
     localStorage.setItem(KEY+'.beforeimport',JSON.stringify(S));
     localStorage.setItem(LASTSYNC_KEY,row.updated_at);
-    S=row.data; save(); toast('☁️ Đã kéo về — sai thì bấm ↩️ Hoàn tác');
+    const nr=normalize(row.data); if(!nr){toast('Dữ liệu trên mây hỏng');return;}
+    S=nr.data; save(); toast('☁️ Đã kéo về — sai thì bấm ↩️ Hoàn tác');
     syncStatus('✅ Đồng bộ: <b>'+code+'</b> · kéo về lúc '+new Date().toLocaleTimeString('vi-VN'));
     showView('today');
   }catch(e){
@@ -1472,21 +1538,37 @@ document.getElementById('importFile').onchange=e=>{
         extra='\n\nFile dài '+txt.length+' ký tự, chết ở ký tự '+p+
               (p>txt.length-50?'\n→ File bị CỤT ĐUÔI. Backup này hỏng, phải xuất lại từ máy còn dữ liệu.':'');
       }
+      // FIX 11/11: Chrome báo "Unexpected end of JSON input" không kèm vị trí → tự nhận ra file cụt
+      else if(!txt.trim().endsWith('}')){
+        extra='\n\nFile dài '+txt.length+' ký tự nhưng KHÔNG kết thúc bằng dấu }\n→ File bị CỤT ĐUÔI. Backup này hỏng, phải xuất lại từ máy còn dữ liệu.';
+      }
       alert('❌ File JSON hỏng.\n\n'+err.message+extra);
       e.target.value=''; return;
     }
-    // 2. kiểm cấu trúc
-    if(!o||!Array.isArray(o.sets)){ alert('❌ Không phải file backup của app này (thiếu mục "sets").'); e.target.value=''; return; }
-    // 3. so sánh với dữ liệu đang có — chặn ghi đè mất dữ liệu
-    const curCards=countCards(S), newCards=countCards(o);
-    let msg='Sắp NHẬP:  '+o.sets.length+' deck · '+newCards+' thẻ\n'+
-            'Đang có:   '+(S.sets||[]).length+' deck · '+curCards+' thẻ\n\n'+
+    // 2. kiểm + chuẩn hoá cấu trúc (FIX 11/11: đắp phần thiếu để file cũ/khác phiên bản không làm sập app)
+    const n=normalize(o);
+    if(!n){ alert('❌ Không phải file backup của app này (thiếu mục "sets").'); e.target.value=''; return; }
+    o=n.data;
+    // 3. giống hệt dữ liệu đang có → khỏi nhập
+    if(JSON.stringify(o)===JSON.stringify(S)){ toast('File giống hệt dữ liệu đang có — không cần nhập'); e.target.value=''; return; }
+    // 4. so sánh ĐỘ MỚI, không chỉ số thẻ (FIX 11/11: cùng 175 thẻ vẫn có thể là bản cũ hơn cả tháng)
+    const a=summarize(o), b=summarize(S);
+    const warns=[];
+    if(a.cards<b.cards)     warns.push('file có ÍT THẺ HƠN ('+a.cards+' < '+b.cards+')');
+    if(a.answers<b.answers) warns.push('file có ÍT LƯỢT TRẢ LỜI HƠN ('+a.answers+' < '+b.answers+') → tiến độ cũ hơn');
+    if(b.last&&a.last<b.last) warns.push('lần học gần nhất trong file ('+(a.last?fmt(a.last):'chưa học')+') CŨ HƠN máy này ('+fmt(b.last)+')');
+    let msg='Sắp NHẬP:\n  '+summaryLine(a)+'\n\nĐang có:\n  '+summaryLine(b)+'\n\n'+
             'Nhập backup sẽ THAY THẾ toàn bộ dữ liệu hiện tại.';
-    if(newCards<curCards) msg='🚨 CẢNH BÁO: file nhập vào ÍT THẺ HƠN dữ liệu đang có.\n\n'+msg+'\n\nGần như chắc chắn đây là backup cũ hoặc file hỏng. Chắc chưa?';
+    if(n.fixes.length) msg+='\n\nĐã tự vá trong file: '+n.fixes.slice(0,5).join('; ')+(n.fixes.length>5?' (+'+(n.fixes.length-5)+' mục)':'');
+    if(warns.length) msg='🚨 CẢNH BÁO — file này có vẻ CŨ HƠN dữ liệu đang có:\n  • '+warns.join('\n  • ')+'\n\n'+msg+'\n\nNhập vào là MẤT phần tiến độ mới hơn. Chắc chưa?';
     if(!confirm(msg+'\n\nOK để tiếp tục.')){ e.target.value=''; return; }
-    // 4. lưu bản cũ để hoàn tác được
-    try{ localStorage.setItem(KEY+'.beforeimport', JSON.stringify(S)); }catch(err){}
-    S=o; save(); toast('Đã nhập backup — sai thì bấm ↩️ Hoàn tác'); showView('today');
+    // 5. lưu bản cũ để hoàn tác được — lưu KHÔNG được thì dừng, không nhập mù
+    try{ localStorage.setItem(KEY+'.beforeimport', JSON.stringify(S)); }
+    catch(err){ if(!confirm('⚠️ Không cất được bản hiện tại để hoàn tác (bộ nhớ đầy?).\nXuất backup trước rồi hãy nhập.\n\nVẫn nhập (KHÔNG hoàn tác được)?')){ e.target.value=''; return; } }
+    // 6. nhập: chạy luôn các bước xếp lịch như lúc mở app, để màn Hôm nay đúng ngay
+    S=o; save();
+    toast('✅ Đã nhập '+a.cards+' thẻ — sai thì bấm ↩️ Hoàn tác');
+    showView('today');
     e.target.value='';
   };
   r.readAsText(f);
@@ -1521,7 +1603,7 @@ document.getElementById('undoImport').onclick=()=>{
   const raw=localStorage.getItem(KEY+'.beforeimport');
   if(!raw){ alert('Không có bản nào để hoàn tác.'); return; }
   if(!confirm('Quay lại trạng thái NGAY TRƯỚC lần nhập gần nhất?')) return;
-  try{ S=JSON.parse(raw); save(); toast('Đã hoàn tác'); showView('today'); }
+  try{ const nu=normalize(JSON.parse(raw)); if(!nu)throw new Error('thiếu mục "sets"'); S=nu.data; save(); toast('Đã hoàn tác'); showView('today'); }
   catch(err){ alert('Bản lưu tạm cũng hỏng: '+err.message); }
 };
 document.getElementById('resetAll').onclick=()=>{if(confirm('Xóa sạch TOÀN BỘ học phần và tiến độ? Không nạp lại deck nào — app sẽ trống trơn. Nhớ Xuất backup trước.')){S=seed();save();showView('today');}};
