@@ -449,7 +449,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
   - Test viết trước: toàn bộ danh sách ở cuối mục 3.2.
   - Xong khi: `npm test` xanh.
 
-- [ ] **1.3 Tách script v1, nối màn Hôm nay vào hàng chờ** — [UI] — cỡ 75 phút
+- [x] **1.3 Tách script v1, nối màn Hôm nay vào hàng chờ** — [UI] — cỡ 75 phút
   - Mục tiêu: v1 dùng `logic/`; Hôm nay hiện tối đa 4 deck theo ưu tiên; không còn dời lịch.
   - Các bước:
     1. Cắt nguyên khối nội dung giữa `<script>` và `</script>` cuối `index.html` sang `app.js` (không sửa gì khi cắt).
@@ -715,6 +715,13 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13 → 
 - `emptyState()` trong `logic/migrate.js` đặt KPI mặc định 90 theo mục 1 ("app trống mặc định 90"); `seed()` của v1 trong `index.html` vẫn là 80, chưa đụng. Với file thật không ảnh hưởng (đã có `kpi: 90`).
 - Số thẻ từng deck ở Phụ lục A khớp file JSON (đã có test).
 - Môi trường: Node 24.22.1, Vitest 5.1.0. Git ở máy này bật `core.autocrlf`, nên có cảnh báo "LF will be replaced by CRLF": vô hại, trong repo vẫn là LF.
+
+**Task 1.3 (13/11)**
+- Ngoài 4 hàm ghi trong task, đã xoá thêm `restoreResetDecks` (bản vá một lần 06/10) vì nó gọi `spreadDecks`, tức là cũng dời lịch. Với file thật nó không còn chạy (`fix0610: true`). `repairEarlyLearn` giữ nguyên.
+- Trạng thái trung gian tới hết task 1.6: lên mốc vẫn đi qua `setStatus`/`advanceStage` cũ, nên deck trễ hơn 2 ngày (kiểu cũ gọi là "broken") làm xong chưa lên mốc. Task 1.6 thay bằng `applySessionResult`. Không dùng bản ở giữa 1.3 và 1.6 để học thật.
+- Màn Học phần: deck `stageIdx 0` đã học dở hiện "Đang học dở" (task chỉ liệt kê 4 nhãn, không có nhãn cho trường hợp này).
+- "Lấy từ hôm nay" ở tab Dịch đoạn văn = thẻ của `reviews` + `fresh` (không gồm `more`, `stock`, deck đã xong).
+- Tiêu chí tay: người thực thi chạy bằng Chrome headless (nhập file thật qua đúng nút Nhập backup, ngày học 13/11): Hôm nay ra `2108`, `1708`, `2008` + mới `2208`, chờ thêm `1608`, kho `3108`, `0209`, `1109`, dòng cổng `ceiling`; 5 tab mở được; tải lại không đổi thứ tự, `S.sets` bằng đúng file JSON; "Học thêm" deck kho vào được màn Học. Console không có lỗi JavaScript; chỉ có 404 `favicon.ico` (có từ trước, trang chưa bao giờ có favicon).
 
 ---
 
