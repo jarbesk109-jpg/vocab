@@ -56,7 +56,7 @@ Mục tiêu số 1: Khang mở app MỖI NGÀY. Thước đo: giữ được str
 | Thiết bị | Laptop và điện thoại. ONLINE là chính: tiến độ chỉ ghi khi có mạng. Phiên bắt đầu lúc có mạng mà rớt mạng giữa chừng: giữ kết quả, có mạng thì tự gửi. Luyện offline không ghi tiến độ (Phase 3). |
 | Server | GIỮ Supabase (project sẵn có). Supabase Auth email + mật khẩu, bảng mới, RLS `user_id = auth.uid()`. Bỏ đồng bộ bằng mã; khoá bảng `vocab_sync` cũ lúc chuyển hẳn. Giữ `keepalive.yml`. |
 | Công nghệ v2 | Vite + React + TypeScript, CSS tay theo design token (chuẩn so: app Track List ở `C:\Kingston\Vibe-coding\Fable-5.2-test\index.html`). Không thư viện giao diện. |
-| Test | Vitest. `npm test`. Cần Node 20+. |
+| Test | Vitest. `npm test`. Cần Node 22.12+ (Vitest 5; sửa 15/11, trước ghi Node 20+). |
 | Hosting | GitHub Pages, repo `jarbesk109-jpg/vocab`. Chi phí: 0 đ/năm. Tên miền `.id.vn`: Phase 3. |
 | AI API | Không gọi trong v2. |
 | Tên | **Recall**: trung tính kiểu công cụ, xanh chàm, gọn. |
@@ -609,7 +609,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
 - [ ] **2.2 Deploy bằng GitHub Actions** — [UI] — cỡ 1 giờ — CẦN KHANG XÁC NHẬN TRƯỚC KHI PUSH
   - Mục tiêu: trang thật phục vụ v1 ĐÓNG BĂNG theo tag ở `/vocab/` và v2 ở `/vocab/v2/`; sửa `logic/` trong Phase 2 không ảnh hưởng v1 đang chạy.
   - File: `.github/workflows/deploy.yml`, `V1_TAG` (nội dung: `v1-live-1`).
-  - Workflow (khi push `main`): checkout đủ tag → Node 20 → `npm ci` → `npm test` (`CI=true`) → `npm run build` → tạo `_site/`: lấy `index.html`, `app.js`, `logic/` từ tag ghi trong `V1_TAG` (`git archive`), chép bản build v2 vào `_site/v2/`, thêm `.nojekyll` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
+  - Workflow (khi push `main`): checkout đủ tag → Node 22 → `npm ci` → `npm test` (`CI=true`) → `npm run build` → tạo `_site/`: lấy `index.html`, `app.js`, `logic/` từ tag ghi trong `V1_TAG` (`git archive`), chép bản build v2 vào `_site/v2/`, thêm `.nojekyll` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
   - Việc của Khang: repo → Settings → Pages → Source: **GitHub Actions**.
   - Tiêu chí tay: `/vocab/` vẫn là v1 y như trước, dữ liệu còn; `/vocab/v2/` mở được khung v2.
   - Xong khi: cả hai địa chỉ chạy. Từ đây được push sau mỗi task.
@@ -900,6 +900,18 @@ Thử thêm ngoài checklist:
   - Sáng/tối: đổi được, tải lại vẫn giữ, theme đã đặt trước khi `<body>` được vẽ; "Theo máy" đổi theo hệ điều hành; `prefers-reduced-motion` rút gọn hiệu ứng.
   - Console không lỗi.
 - Chưa thử: điện thoại thật, và kéo cửa sổ bằng tay để xem có giật không (headless chỉ đo từng bề rộng rời). Phần này Khang xem giúp khi mở `npm run dev`.
+- **Khang duyệt 2.1 (15/11).**
+
+**Task 2.2 (15/11): đã viết xong và thử ở máy, CHƯA push, chờ Khang**
+- File: `.github/workflows/deploy.yml`, `V1_TAG` (`v1-live-1`), thêm `scripts/build-site.mjs` (lệnh `npm run site`: dựng `_site/` gồm v1 lấy thẳng từ tag + bản build v2 ở `_site/v2/`; workflow và máy mình dùng chung một script). `_site/` đã vào `.gitignore`.
+- Workflow dùng **Node 22**, không phải Node 20 như task ghi: Vitest 5 cần Node ≥ 22.12, Vite 8 cần ≥ 20.19. Đã sửa `engines` trong `package.json` thành `>=22.12` (máy Khang đang là Node 24).
+- Sửa một lỗi của 2.1 lộ ra khi thử bản BUILD: chuyển màn không đưa focus về tiêu đề (bản dev che mất vì StrictMode chạy effect hai lần). Đã sửa trong `v2/src/App.tsx`.
+- Đã thử ở máy (`npm test` với `CI=true` → `npm run build` → `npm run site`, rồi phục vụ `_site/` dưới đường dẫn `/vocab/` như GitHub Pages, kiểm bằng Chrome headless):
+  - 8 file v1 trong `_site/` khớp từng byte với tag `v1-live-1`; 4 file đã so với trang thật đang chạy cũng khớp. `_site/logic/` chỉ có 6 file của v1 (không có `answers.js`, `store.js`…).
+  - `/vocab/`: v1 mở được, nạp đủ `logic/`, 5 tab, không lỗi JavaScript. `/vocab/v2/`: 86/86 mục kiểm của 2.1 đạt trên bản build.
+  - Đường lui: phục vụ thẳng thư mục gốc ở HEAD (giống Pages kiểu "Deploy from a branch" sau khi push) thì v1 vẫn mở được, không lỗi.
+- Chưa làm được ở máy: chạy workflow thật trên GitHub (Ubuntu), và đọc cấu hình Pages hiện tại (máy không có `gh`).
+- **Thứ tự cho Khang:** (1) xuất backup v1; (2) Settings → Pages → Source = GitHub Actions; (3) `git switch main`, `git merge --ff-only phase-2`, `git push origin main`; (4) tab Actions: workflow `deploy` xanh; (5) kiểm `/vocab/` và `/vocab/v2/`. Hỏng thì: Settings → Pages → Source = "Deploy from a branch", `main`, `/ (root)`. Xong mới tick 2.2.
 
 ---
 

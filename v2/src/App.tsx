@@ -51,24 +51,10 @@ function formatStudyDay(day: string): string {
 }
 
 function Screen({ route, sub, children }: { route: Route; sub?: string; children: ReactNode }) {
-  const title = useRef<HTMLHeadingElement>(null);
-  const first = useRef(true);
-
-  // Chuyển màn: đổi tiêu đề tab, đưa focus về tiêu đề màn (không làm khi vừa mở app).
-  useEffect(() => {
-    document.title = route === 'today' ? 'Recall' : `${TITLES[route]} · Recall`;
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    title.current?.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
-  }, [route]);
-
   return (
-    <div className="screen" key={route}>
+    <div className="screen">
       <header className="screen-head">
-        <h1 className="screen-title" tabIndex={-1} ref={title}>
+        <h1 className="screen-title" tabIndex={-1}>
           {TITLES[route]}
         </h1>
         {sub && <p className="screen-sub">{sub}</p>}
@@ -114,6 +100,18 @@ function Settings() {
 
 export function App() {
   const route = useRoute();
+  const shown = useRef(route);
+
+  // Chuyển màn: đổi tiêu đề tab, đưa focus về tiêu đề màn và cuộn lên đầu (không làm khi vừa mở app).
+  // Đặt ở App vì mỗi màn là một <Screen> mới: trạng thái "đã mở app chưa" phải sống lâu hơn từng màn.
+  useEffect(() => {
+    document.title = route === 'today' ? 'Recall' : `${TITLES[route]} · Recall`;
+    if (shown.current === route) return;
+    shown.current = route;
+    document.querySelector<HTMLElement>('.screen-title')?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [route]);
+
   // Giữ theme đúng với lựa chọn đã lưu ngay cả khi chưa mở màn Cài đặt (ví dụ máy đổi sáng/tối).
   useTheme();
 

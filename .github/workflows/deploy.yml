@@ -1,0 +1,49 @@
+# Đưa trang lên GitHub Pages (PLAN.md task 2.2).
+#   /vocab/      v1 ĐÓNG BĂNG theo tag ghi trong file V1_TAG (index.html, app.js, logic/)
+#   /vocab/v2/   v2 "Recall" build từ nhánh main
+# Cần: repo → Settings → Pages → Source = "GitHub Actions".
+# Test đỏ hoặc build lỗi thì KHÔNG deploy: trang thật giữ nguyên bản đang chạy.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # cho phép bấm chạy tay trong tab Actions
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Mỗi lúc chỉ một lượt deploy; lượt đang chạy được chạy cho xong.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # cần đủ tag để lấy v1 theo V1_TAG
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test # CI=true: nhóm test cần file JSON thật tự bỏ qua
+      - run: npm run build
+      - run: npm run site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

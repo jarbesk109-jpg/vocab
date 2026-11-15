@@ -8,10 +8,11 @@
     "test": "vitest run",
     "dev": "vite",
     "build": "tsc --noEmit && tsc --noEmit -p tsconfig.logic.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "site": "node scripts/build-site.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
