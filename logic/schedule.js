@@ -124,7 +124,7 @@ export function planToday(sets, today) {
         cmp(x.set.createdAt || '', y.set.createdAt || '') ||
         cmp(x.set.name || '', y.set.name || ''),
     );
-  const lateCount = waiting.filter((x) => x.status.late >= 1).length;
+  const lateCount = waiting.filter((x) => /** @type {any} */ (x.status).late >= 1).length;
 
   let lastNew = null;
   for (const set of sets) {
@@ -158,7 +158,9 @@ export function planToday(sets, today) {
     fresh,
     more: waiting.slice(revSlots),
     stock: fresh ? stockAll.slice(1) : stockAll,
-    upcoming: items.filter((x) => x.status.kind === 'scheduled').sort((x, y) => cmp(x.status.due, y.status.due)),
+    upcoming: items
+      .filter((x) => x.status.kind === 'scheduled')
+      .sort((x, y) => cmp(/** @type {any} */ (x.status).due, /** @type {any} */ (y.status).due)),
     gate: { open, reason, lateCount, daysSinceNew },
   };
 }

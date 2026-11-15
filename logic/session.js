@@ -280,6 +280,7 @@ function learnResolve(state, cur, ok, typo) {
     requeue({ cardId: head.cardId, got: 0 }, 2); // sai: về bước đầu, gặp lại sau 2 câu
   }
   const next = { ...state, queue, mastered, wrongs, tries: state.tries + 1, phase: 'ask', done: queue.length === 0 };
+  /** @type {any[]} */
   const cmds = [answerCmd(state, cur, ok, typo)];
   if (next.done) cmds.push(doneCmd(state, 'learn', learnPct(next), false));
   return { state: next, cmds };

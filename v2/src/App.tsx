@@ -1,0 +1,161 @@
+import { useEffect, useRef, type ReactNode } from 'react';
+import { studyDay } from '../../logic/index.js';
+import { hrefOf, useRoute, type Route } from './router';
+import { useTheme, type ThemeChoice } from './theme';
+
+const NAV: { route: Route; label: string; icon: ReactNode }[] = [
+  {
+    route: 'today',
+    label: 'Hôm nay',
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="m8.5 12.2 2.4 2.4 4.6-5" />
+      </>
+    ),
+  },
+  {
+    route: 'decks',
+    label: 'Học phần',
+    icon: (
+      <>
+        <rect x="4" y="8" width="16" height="11.5" rx="2.5" />
+        <path d="M6.5 5h11" />
+      </>
+    ),
+  },
+  {
+    route: 'settings',
+    label: 'Cài đặt',
+    icon: (
+      <>
+        <path d="M4 7.5h9m4.5 0H20M4 16.5h2.5m4.5 0h9" />
+        <circle cx="15.25" cy="7.5" r="2.25" />
+        <circle cx="8.75" cy="16.5" r="2.25" />
+      </>
+    ),
+  },
+];
+
+const TITLES: Record<Route, string> = {
+  today: 'Hôm nay',
+  decks: 'Học phần',
+  settings: 'Cài đặt',
+};
+
+/** '2026-11-15' → 'Chủ nhật, 15/11' (ngày học: ngày mới bắt đầu lúc 4h sáng). */
+function formatStudyDay(day: string): string {
+  const d = new Date(day + 'T00:00:00Z');
+  const weekday = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'][d.getUTCDay()];
+  return `${weekday}, ${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+}
+
+function Screen({ route, sub, children }: { route: Route; sub?: string; children: ReactNode }) {
+  const title = useRef<HTMLHeadingElement>(null);
+  const first = useRef(true);
+
+  // Chuyển màn: đổi tiêu đề tab, đưa focus về tiêu đề màn (không làm khi vừa mở app).
+  useEffect(() => {
+    document.title = route === 'today' ? 'Recall' : `${TITLES[route]} · Recall`;
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    title.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [route]);
+
+  return (
+    <div className="screen" key={route}>
+      <header className="screen-head">
+        <h1 className="screen-title" tabIndex={-1} ref={title}>
+          {TITLES[route]}
+        </h1>
+        {sub && <p className="screen-sub">{sub}</p>}
+      </header>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="card empty">
+      <strong>{title}</strong>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: 'light', label: 'Sáng' },
+  { value: 'dark', label: 'Tối' },
+  { value: 'system', label: 'Theo máy' },
+];
+
+function Settings() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div className="card">
+      <fieldset className="field">
+        <legend className="field-label">Giao diện</legend>
+        <div className="segmented">
+          {THEMES.map((t) => (
+            <label key={t.value}>
+              <input type="radio" name="theme" value={t.value} checked={theme === t.value} onChange={() => setTheme(t.value)} />
+              {t.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+export function App() {
+  const route = useRoute();
+  // Giữ theme đúng với lựa chọn đã lưu ngay cả khi chưa mở màn Cài đặt (ví dụ máy đổi sáng/tối).
+  useTheme();
+
+  return (
+    <div className="app">
+      <nav className="nav" aria-label="Điều hướng chính">
+        <div className="nav-brand">
+          Re<span>call</span>
+        </div>
+        <ul className="nav-list">
+          {NAV.map((item) => (
+            <li key={item.route}>
+              <a className="nav-link" href={hrefOf(item.route)} aria-current={route === item.route ? 'page' : undefined}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {item.icon}
+                </svg>
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <main className="main">
+        <div className="main-inner">
+          {route === 'today' && (
+            <Screen route="today" sub={formatStudyDay(studyDay(Date.now()))}>
+              <Empty title="Chưa có gì để học">Danh sách hôm nay sẽ hiện ở đây sau khi đăng nhập và chuyển dữ liệu.</Empty>
+            </Screen>
+          )}
+          {route === 'decks' && (
+            <Screen route="decks">
+              <Empty title="Chưa có học phần nào">Các học phần và tiến độ của từng học phần sẽ hiện ở đây.</Empty>
+            </Screen>
+          )}
+          {route === 'settings' && (
+            <Screen route="settings">
+              <Settings />
+            </Screen>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

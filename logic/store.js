@@ -299,11 +299,13 @@ export function createStore({ backend, storage, newId, today, isOnline = () => t
     const applied = new Set((server.meta && server.meta.applied) || []);
     return cmds.filter((c) => !applied.has(c.id));
   };
+  /** @returns {{ ok: false, error: any }} */
   const fail = (code) => {
     error = code;
     emit();
     return { ok: false, error: code };
   };
+  /** @returns {{ ok: true }} */
   const done = () => {
     error = null;
     emit();

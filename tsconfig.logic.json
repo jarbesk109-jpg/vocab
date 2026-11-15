@@ -1,0 +1,13 @@
+{
+  // Kiểm tra kiểu cho logic/ (JavaScript + JSDoc), chạy trong `npm run build`.
+  // Dữ liệu deck/thẻ cố ý để `any` (giữ nguyên mọi trường, kể cả trường lạ) nên không bật strict ở đây:
+  // mục đích là bắt lỗi gọi sai hàm, sai tên trường, sai số tham số. Code TypeScript của v2/ vẫn strict
+  // (tsconfig.json) và vẫn đọc được kiểu từ JSDoc của logic/.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "checkJs": true,
+    "strict": false,
+    "types": []
+  },
+  "include": ["logic"]
+}

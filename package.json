@@ -5,12 +5,24 @@
   "type": "module",
   "description": "Recall — app học từ vựng (v1 đã vá + logic/ có test)",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev": "vite",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.logic.json && vite build",
+    "preview": "vite preview"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   }
 }

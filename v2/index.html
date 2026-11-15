@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F7F9" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Recall</title>
+    <script>
+      // Đặt giao diện sáng/tối TRƯỚC khi trình duyệt vẽ để không nháy. Cùng khoá với src/theme.ts.
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem('recall.theme');
+        } catch (e) {
+          stored = null;
+        }
+        var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

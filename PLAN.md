@@ -600,7 +600,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
 
 ### Đợt B — giao diện, hạ tầng (theo thứ tự cũ)
 
-- [ ] **2.1 Khung v2** — [UI] — cỡ 2 giờ
+- [x] **2.1 Khung v2** — [UI] — cỡ 2 giờ
   - Mục tiêu: `v2/` chạy được với Vite + React + TypeScript; design token Recall; khung điều hướng (thanh dưới trên điện thoại, cột trái trên laptop); các màn rỗng: Hôm nay, Học phần, Cài đặt; định tuyến bằng hash.
   - File: `v2/index.html`, `v2/src/main.tsx`, `v2/src/App.tsx`, `v2/src/styles/tokens.css`, `v2/src/styles/base.css`, `vite.config.ts` (`root: 'v2'`, `base: './'`), `tsconfig.json` (`allowJs`, `checkJs` cho `logic/`), `package.json` (script `dev`, `build`).
   - Tiêu chí tay: `npm run dev` mở được; đổi sáng/tối không nháy; kéo cửa sổ từ 320px tới 1600px không vỡ; zoom 200% dùng được; nút Back của trình duyệt đi đúng màn.
@@ -883,6 +883,23 @@ Thử thêm ngoài checklist:
 - Thêm `dropDupTerms(cards, dups)` cho nút "bỏ từ trùng".
 
 **Hết Đợt A (15/11).** Mọi logic của v2 đã có trong `logic/` kèm test (`npm test`: 366 test). Task kế tiếp theo thứ tự là 2.1 (khung v2), đầu Đợt B.
+- **Khang duyệt (15/11)** các chỗ tự quyết ở 2.12a, 2.14a, 2.13a; riêng `parseCards` sửa lại để nhận cả Tab (đã làm, có test).
+
+**Task 2.1 (15/11)**
+- Phiên bản cài: Vite 8, React 19, TypeScript 7, `@vitejs/plugin-react` 6. `npm run dev` chạy ở `http://127.0.0.1:5174` (5173 để cho v1). `npm run build` ra `dist/` (đã có trong `.gitignore`).
+- File ngoài danh sách của task, thêm vì cần:
+  - `vitest.config.js`: Vitest mặc định đọc `vite.config.ts` (root là `v2/`) nên sẽ không thấy `tests/`; file này giữ `npm test` chạy ở gốc repo.
+  - `tsconfig.logic.json`: bật `checkJs` + strict cho `logic/` ra khoảng 200 lỗi, gần hết là "tham số ngầm định any" (dữ liệu deck cố ý để `any`). Nên tách: `tsconfig.json` strict cho `v2/` (vẫn đọc kiểu JSDoc của `logic/`), `tsconfig.logic.json` kiểm `logic/` với `checkJs` nhưng không strict. `npm run build` chạy cả hai. Đã sửa 5 chú thích kiểu lệch trong `logic/schedule.js`, `session.js`, `store.js` (chỉ chú thích JSDoc, không đổi hành vi; 371 test vẫn xanh).
+  - `v2/src/router.ts`, `v2/src/theme.ts`, `v2/public/favicon.svg`.
+- Màn Cài đặt đã có sẵn nhóm chọn Sáng / Tối / Theo máy (cần có để thử tiêu chí "đổi sáng/tối không nháy"); nhớ theo máy ở `localStorage` `recall.theme`, không đồng bộ.
+- Màn Hôm nay hiện ngày học lấy từ `logic/` (`studyDay`), để chắc v2 nhập được `logic/` qua Vite.
+- Tiêu chí tay: người thực thi chạy bằng Chrome headless trên `npm run dev` (không phải Khang bấm tay), 86 mục kiểm đều đạt:
+  - Bề rộng 320, 360, 480, 600, 719, 720, 721, 900, 1024, 1280, 1600px: không tràn ngang; dưới 720px thanh điều hướng nằm dưới, từ 720px là cột trái; vùng bấm ≥ 44px; chữ không bị cắt.
+  - Zoom 200% (mô phỏng bằng bề rộng CSS còn một nửa: 640px và 320px) và 80%: dùng được.
+  - Back / Forward đi đúng màn, tiêu đề tab đổi theo; hash lạ về Hôm nay.
+  - Sáng/tối: đổi được, tải lại vẫn giữ, theme đã đặt trước khi `<body>` được vẽ; "Theo máy" đổi theo hệ điều hành; `prefers-reduced-motion` rút gọn hiệu ứng.
+  - Console không lỗi.
+- Chưa thử: điện thoại thật, và kéo cửa sổ bằng tay để xem có giật không (headless chỉ đo từng bề rộng rời). Phần này Khang xem giúp khi mở `npm run dev`.
 
 ---
 
