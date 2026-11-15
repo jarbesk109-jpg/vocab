@@ -262,3 +262,41 @@ describe('findDupTerms: từ đã có ở deck khác (task 2.13a, chuyển từ 
     expect(cards.length).toBe(5);
   });
 });
+
+describe('parseCards: nhận cả Tab (Quizlet xuất ra dùng Tab) — Khang 15/11', () => {
+  const TAB = '\t';
+  it('dòng "từ<Tab>nghĩa" là một thẻ', () => {
+    expect(parseCards(`reduce${TAB}giảm\ngovernment${TAB}chính phủ`)).toEqual({
+      cards: [
+        { term: 'reduce', def: 'giảm' },
+        { term: 'government', def: 'chính phủ' },
+      ],
+      bad: 0,
+      badLines: [],
+    });
+  });
+  it('dòng có Tab thì tách ở Tab ĐẦU TIÊN, dấu : trong từ hoặc nghĩa được giữ nguyên', () => {
+    expect(parseCards(`ratio 3:1${TAB}tỉ lệ: ba trên một`).cards).toEqual([{ term: 'ratio 3:1', def: 'tỉ lệ: ba trên một' }]);
+    expect(parseCards(`a${TAB}b${TAB}c`).cards).toEqual([{ term: 'a', def: `b${TAB}c` }]);
+  });
+  it('trộn hai kiểu trong cùng một lần dán: mỗi dòng tự xét', () => {
+    const r = parseCards(`reduce: giảm\r\napple${TAB}quả táo\r\n\r\n  even :  thậm chí, ngay cả  \r\n  lead to ${TAB}  dẫn đến  `);
+    expect(r.cards).toEqual([
+      { term: 'reduce', def: 'giảm' },
+      { term: 'apple', def: 'quả táo' },
+      { term: 'even', def: 'thậm chí, ngay cả' },
+      { term: 'lead to', def: 'dẫn đến' },
+    ]);
+    expect(r.bad).toBe(0);
+  });
+  it('dòng lỗi kiểu Tab: thiếu từ hoặc thiếu nghĩa', () => {
+    const r = parseCards(`${TAB}thiếu từ\nok${TAB}được\nx${TAB}   `);
+    expect(r.cards).toEqual([{ term: 'ok', def: 'được' }]);
+    expect(r.bad).toBe(1 + 1);
+    // "x<Tab>   " cắt hai đầu xong chỉ còn "x": không có dấu tách
+    expect(r.badLines).toEqual(['thiếu từ', 'x']);
+  });
+  it('Tab chỉ nằm ở đầu hoặc cuối dòng (thụt lề) thì không tính là dấu tách: vẫn tách ở dấu :', () => {
+    expect(parseCards(`${TAB}reduce: giảm${TAB}`).cards).toEqual([{ term: 'reduce', def: 'giảm' }]);
+  });
+});

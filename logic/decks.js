@@ -69,8 +69,10 @@ export function renameDay1OnImport(sets, fromDay = DAY1_RENAME_FROM) {
 }
 
 /**
- * Đọc danh sách dán vào, mỗi dòng một thẻ dạng `từ: nghĩa` (định dạng nhập của v1, không đổi).
- * Tách ở dấu `:` ĐẦU TIÊN; bỏ dòng trống; dòng không có `:`, thiếu từ hoặc thiếu nghĩa là dòng lỗi.
+ * Đọc danh sách dán vào, mỗi dòng một thẻ: `từ: nghĩa`, hoặc `từ<Tab>nghĩa` (Quizlet xuất ra dùng Tab).
+ * Mỗi dòng tự xét: dòng có Tab (sau khi cắt khoảng trắng hai đầu) thì tách ở Tab ĐẦU TIÊN và giữ nguyên
+ * dấu `:` bên trong; không có Tab thì tách ở dấu `:` ĐẦU TIÊN.
+ * Bỏ dòng trống; dòng không có dấu tách, thiếu từ hoặc thiếu nghĩa là dòng lỗi.
  * Thẻ trả về chỉ có `term`, `def`; nơi gọi tự gắn `id`.
  * @param {string} text
  * @returns {{ cards: { term: string, def: string }[], bad: number, badLines: string[] }}
@@ -83,7 +85,8 @@ export function parseCards(text) {
     .map((l) => l.trim())
     .filter(Boolean);
   for (const line of lines) {
-    const idx = line.indexOf(':');
+    const tab = line.indexOf('\t');
+    const idx = tab >= 0 ? tab : line.indexOf(':');
     const term = idx < 0 ? '' : line.slice(0, idx).trim();
     const def = idx < 0 ? '' : line.slice(idx + 1).trim();
     if (term && def) cards.push({ term, def });

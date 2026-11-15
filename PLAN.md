@@ -732,7 +732,7 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13b (v�
 | Tắt tiếng toàn cục, nhớ theo máy, không theo dõi | `v2/src/audio.ts` | tiêu chí tay |
 | Streak: 7 luật + băng + cứu | `logic/streak.js` | `streak` |
 | Tiến độ chi tiết từng deck | `deckProgress` | `mastery` |
-| Định dạng nhập `từ: nghĩa`; cảnh báo từ trùng deck khác | `logic/decks.js` | `decks` |
+| Định dạng nhập `từ: nghĩa` hoặc `từ<Tab>nghĩa`; cảnh báo từ trùng deck khác | `logic/decks.js` | `decks` |
 | Deck xong Ngày 1 tự đổi tên thành `DDMM`; ôn không đổi; trùng thêm `b`, `c`… | `day1Name`, `renameOnDay1`, `logic/store.js` (`sessionDone`) | `decks`, `store` |
 | Mỗi người chỉ đọc/ghi dữ liệu của mình | SQL RLS | tiêu chí tay 2.3, 2.17 |
 
@@ -871,14 +871,14 @@ Thử thêm ngoài checklist:
 - `lastTest`, `bestTest`, `lastWrite` là `{ date, pct }` hoặc `null`; `bestTest` hoà điểm thì lấy lần gần nhất. `stagesPassed[i]` là `{ passed, date }`.
 - Ngày qua mốc Mới: lấy `startedAt` nếu có (xong Ngày 1 bằng Học thì không có bài Kiểm tra nào), không thì bài Kiểm tra `stage 0` đạt KPI. Deck lùi mốc rồi qua lại: lấy lần qua cuối.
 - Phiên Viết ghi `history` nằm trong lệnh `sessionDone` của `logic/store.js` (không đụng `applySessionResult`): mỗi phiên Viết làm HẾT một lượt là một dòng `{ date, pct (làm tròn), mode: 'write' }`, kể cả khi deck không đổi mốc.
-- **Hệ quả cần biết:** `startedDay` (mục 3.2) lấy ngày sớm nhất trong `history`. Deck mới mà làm hết một lượt Viết nhưng CHƯA xong Ngày 1 (còn thẻ sai) thì từ nay có `history`, nên được tính là "đã bắt đầu deck mới hôm đó" khi xét trần 3 ngày. Trước đây trường hợp này không tính. Người thực thi thấy hợp lý (đúng là vừa bắt đầu một deck mới) nên không sửa mục 3.2; Khang không đồng ý thì báo.
+- **Hệ quả cần biết:** `startedDay` (mục 3.2) lấy ngày sớm nhất trong `history`. Deck mới mà làm hết một lượt Viết nhưng CHƯA xong Ngày 1 (còn thẻ sai) thì từ nay có `history`, nên được tính là "đã bắt đầu deck mới hôm đó" khi xét trần 3 ngày. Trước đây trường hợp này không tính. Người thực thi thấy hợp lý (đúng là vừa bắt đầu một deck mới) nên không sửa mục 3.2; Khang không đồng ý thì báo. **Khang duyệt 15/11.**
 
 **Task 2.14a (15/11)**
 - `streakEvents(before, after)`: giao diện gọi `computeStreak` trước và sau mỗi lệnh rồi đưa hai kết quả vào. `before` là `null` (lần đầu mở app) thì không có hiệu ứng. Số giảm hoặc đứng yên: mọi cờ `false`.
 - `freezeEarned` = số băng sau lớn hơn trước. Trường hợp hiếm không báo: dùng băng đúng ngày chạm bội số 21 (mất 1, nhận 1, số băng không đổi).
 
 **Task 2.13a (15/11)**
-- `parseCards(text)` → `{ cards: [{ term, def }], bad, badLines }`. Thẻ chưa có `id`: màn soạn deck (2.13b) tự gắn id rồi phát lệnh `deckUpsert`. Chỉ nhận dấu `:` (v1 còn cho chọn dấu tách khác; v2 theo đặc tả chỉ có `từ: nghĩa`). Không tự bỏ dòng trùng trong chính danh sách dán.
+- `parseCards(text)` → `{ cards: [{ term, def }], bad, badLines }`. Thẻ chưa có `id`: màn soạn deck (2.13b) tự gắn id rồi phát lệnh `deckUpsert`. Nhận cả `từ: nghĩa` lẫn `từ<Tab>nghĩa` (Khang 15/11: Quizlet xuất ra dùng Tab): mỗi dòng tự xét, dòng có Tab thì tách ở Tab đầu tiên (dấu `:` bên trong giữ nguyên), không có Tab thì tách ở dấu `:` đầu tiên. Không tự bỏ dòng trùng trong chính danh sách dán.
 - `findDupTerms(cards, decks, skipDeckId)` → `[{ term, deck, deckId }]`, chuyển từ v1: so NGUYÊN chuỗi từ theo `norm` (`lead to` không trùng `lead to / result in`), mỗi từ báo một lần, deck đứng trước được báo. `decks` truyền `state.decks` (deck đã xoá không tính).
 - Thêm `dropDupTerms(cards, dups)` cho nút "bỏ từ trùng".
 
