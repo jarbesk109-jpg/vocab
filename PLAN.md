@@ -606,7 +606,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Tiêu chí tay: `npm run dev` mở được; đổi sáng/tối không nháy; kéo cửa sổ từ 320px tới 1600px không vỡ; zoom 200% dùng được; nút Back của trình duyệt đi đúng màn.
   - Xong khi: tiêu chí đạt, `npm test` và `npm run build` xanh. Không push.
 
-- [ ] **2.2 Deploy bằng GitHub Actions** — [UI] — cỡ 1 giờ — CẦN KHANG XÁC NHẬN TRƯỚC KHI PUSH
+- [x] **2.2 Deploy bằng GitHub Actions** — [UI] — cỡ 1 giờ — CẦN KHANG XÁC NHẬN TRƯỚC KHI PUSH
   - Mục tiêu: trang thật phục vụ v1 ĐÓNG BĂNG theo tag ở `/vocab/` và v2 ở `/vocab/v2/`; sửa `logic/` trong Phase 2 không ảnh hưởng v1 đang chạy.
   - File: `.github/workflows/deploy.yml`, `V1_TAG` (nội dung: `v1-live-1`).
   - Workflow (khi push `main`): checkout đủ tag → Node 22 → `npm ci` → `npm test` (`CI=true`) → `npm run build` → tạo `_site/`: lấy `index.html`, `app.js`, `logic/` từ tag ghi trong `V1_TAG` (`git archive`), chép bản build v2 vào `_site/v2/`, thêm `.nojekyll` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
@@ -912,6 +912,15 @@ Thử thêm ngoài checklist:
   - Đường lui: phục vụ thẳng thư mục gốc ở HEAD (giống Pages kiểu "Deploy from a branch" sau khi push) thì v1 vẫn mở được, không lỗi.
 - Chưa làm được ở máy: chạy workflow thật trên GitHub (Ubuntu), và đọc cấu hình Pages hiện tại (máy không có `gh`).
 - **Thứ tự cho Khang:** (1) xuất backup v1; (2) Settings → Pages → Source = GitHub Actions; (3) `git switch main`, `git merge --ff-only phase-2`, `git push origin main`; (4) tab Actions: workflow `deploy` xanh; (5) kiểm `/vocab/` và `/vocab/v2/`. Hỏng thì: Settings → Pages → Source = "Deploy from a branch", `main`, `/ (root)`. Xong mới tick 2.2.
+
+**Task 2.2: đã deploy (15/11)**
+- Khang đổi Settings → Pages → Source sang GitHub Actions và bảo push. Đã `git merge --ff-only phase-2` vào `main` rồi `git push origin main` (`f553b30..6143c6a`), không force. Workflow `deploy` chạy lần đầu xanh cả hai job `build` và `deploy`.
+- Kiểm trên trang thật (người thực thi, bằng `curl` và Chrome headless):
+  - `/vocab/`: 8 file v1 (`index.html`, `app.js`, 6 file `logic/`) khớp từng byte với tag `v1-live-1`; trang mở được, 5 tab, nạp đúng 6 file `logic/`, không lỗi JavaScript.
+  - `/vocab/logic/answers.js` và `/vocab/logic/store.js`: 404 (v1 đang chạy bản đóng băng). `/vocab/PLAN.md`, `/vocab/package.json` cũng 404: trang thật giờ chỉ còn v1 và v2, không còn phục vụ cả repo.
+  - `/vocab/v2/`: tiêu đề Recall, `index.html` khớp bản build ở máy, 86/86 mục kiểm của 2.1 đạt.
+- Chưa kiểm được (trình duyệt headless là hồ sơ trống, không có dữ liệu của Khang): dữ liệu thật còn nguyên, màn Hôm nay đúng, đồng bộ bằng mã, và điện thoại. Khang xem giúp sau khi Ctrl+Shift+R.
+- Từ đây: mỗi lần push `main` là một lần deploy (test đỏ hoặc build lỗi thì không deploy). v1 chỉ đổi khi sửa file `V1_TAG`. Theo mục 0 được push sau mỗi task; nhánh `phase-2` đã gộp hết vào `main`.
 
 ---
 
