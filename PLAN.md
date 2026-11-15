@@ -68,9 +68,10 @@ Mục tiêu số 1: Khang mở app MỖI NGÀY. Thước đo: giữ được str
 | Số từ mỗi deck | Không giới hạn, không cảnh báo. |
 | Backup | Một nút "Tải bản sao" khuất trong Cài đặt, không nhắc nhở. App tự lưu bản sao hằng tuần trên server. |
 | Dữ liệu thật | Không đưa lên repo public: file JSON nằm trong `.gitignore`; gỡ `SNAPSHOT` khỏi code v1 trước khi commit. |
+| Tên deck | (Khang 15/11) Deck xong Ngày 1 thì TỰ ĐỔI TÊN thành ngày học xong dạng `DDMM` (vd `1411`); ôn không đổi tên; mọi deck đều đổi; trùng thì thêm `b`, `c`… (mục 3.10). Chỉ áp dụng trong v2. |
 | ĐỀ XUẤT logic | Chưa áp dụng cái nào trong v2 (xem Phase 3). |
 
-Mâu thuẫn `RULES.md` §11 đã chốt: #1 giữ mốc sau khi gãy nhịp; #2 theo mục 3.2; #3 chỉ chấp nhận học 2 deck/ngày, không lên lịch cho nó; #4 học sớm thì hôm đó là Ngày 1; #5 phương án (c); #6 KPI là cài đặt; #7 tắt tiếng toàn cục, không theo dõi; #8 giữ trường `note`, không đổi định dạng nhập; #9 không có trường từ loại; #10 tên deck tự do, app hiện Ngày 1 thật; #11 đăng nhập bằng tài khoản; #12 bỏ; #13 theo mục 3.4; #14 có khung thời gian + mục "Không làm".
+Mâu thuẫn `RULES.md` §11 đã chốt: #1 giữ mốc sau khi gãy nhịp; #2 theo mục 3.2; #3 chỉ chấp nhận học 2 deck/ngày, không lên lịch cho nó; #4 học sớm thì hôm đó là Ngày 1; #5 phương án (c); #6 KPI là cài đặt; #7 tắt tiếng toàn cục, không theo dõi; #8 giữ trường `note`, không đổi định dạng nhập; #9 không có trường từ loại; #10 tên deck tự do cho tới khi xong Ngày 1, lúc đó app tự đổi tên thành ngày xong Ngày 1 (mục 3.10, Khang 15/11; thay cho "app hiện Ngày 1 thật"); #11 đăng nhập bằng tài khoản; #12 bỏ; #13 theo mục 3.4; #14 có khung thời gian + mục "Không làm".
 
 ---
 
@@ -414,6 +415,23 @@ Thân hàm là một transaction: có `REV_CONFLICT` thì không dòng nào đư
 - Phiên bắt đầu lúc offline không phát lệnh nào.
 - Trước mọi thao tác thay thế toàn bộ (nhập dữ liệu vào tài khoản đã có dữ liệu, xoá sạch): ghi một dòng `snapshots` trước, ghi không được thì dừng.
 - Xoá deck là xoá mềm (`deleted_at`).
+- Lệnh `sessionDone`: sau `applySessionResult`, deck đi qua `renameOnDay1(result, tên các deck KHÁC chưa xoá, cmd.day)` (mục 3.10).
+
+### 3.10 Tự đổi tên deck khi xong Ngày 1 (`logic/decks.js`; luật mới, Khang 15/11)
+
+- Khi một deck **xong Ngày 1** (kết quả `applySessionResult` có `advanced === true` và `stageFrom === 0`: Học/Viết đủ thẻ, hoặc Kiểm tra đủ bài đạt KPI), tên deck tự đổi thành **ngày học xong** dạng `DDMM`. Ví dụ xong ngày 14/11 → `1411`.
+- **Ôn không đổi tên**: mọi kết quả ở mốc ≥ 1 (đạt, trượt, lùi mốc phục hồi) giữ nguyên tên. Học dở, Kiểm tra trượt ở deck mới: chưa xong Ngày 1 nên chưa đổi.
+- **Mọi deck đều đổi**, tên cũ là gì cũng vậy (tên tự do, tên dạng ngày khác, tên rỗng). Tên cũ không được lưu lại.
+- **Trùng**: nếu đã có deck KHÁC (chưa xoá) mang tên đó thì thêm hậu tố trống đầu tiên `b`, `c`, … `z` (`1411`, `1411b`, `1411c`); hết `z` thì `-27`, `-28`… So tên sau khi bỏ khoảng trắng hai đầu, không phân biệt hoa thường. Tên của chính deck không tính là trùng.
+- `day1Name(today, otherNames)` → chuỗi tên. `renameOnDay1(result, otherNames, today)` → deck (bản sao đã đổi tên, hoặc đúng `result.set` khi không phải xong Ngày 1). Cả hai thuần.
+
+Cách hiểu của người thực thi (Khang chưa nói rõ, xem mục 9):
+- "Ngày học xong" là **ngày học** theo mục 3.1: xong lúc 02:00 sáng 15/11 vẫn là `1411`.
+- Chỉ đổi MỘT lần, đúng lúc xong Ngày 1. Sau đó Khang sửa tên tay được, app không đổi lại. Deck đã qua Ngày 1 từ trước (`1608`…`2108`) không bị đổi hồi tố.
+- So trùng với MỌI deck khác chưa xoá, kể cả deck cũ trùng `DDMM` của năm trước (xong ngày 16/08/2027 khi còn deck `1608` → `1608b`).
+- v1 (đóng băng ở tag `v1-live-1`) KHÔNG có luật này; luật chạy trong v2 qua lệnh `sessionDone` (task 2.5).
+
+Test (`tests/decks.test.js`): `1411`, `0209`; trùng → `b`, `c`; lấy hậu tố trống đầu tiên; bỏ khoảng trắng, hoa thường; hết `z` → `-27`; deck kho Học xong → đổi; deck mới Kiểm tra đạt → đổi; học dở từ hôm trước xong hôm nay → tên theo hôm nay; học nửa deck, Kiểm tra trượt → không đổi; ôn đạt / trượt / lùi mốc → không đổi; deck tên sẵn `1411` vẫn `1411`; đầu vào không bị sửa.
 
 ---
 
@@ -554,7 +572,7 @@ Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục
 
 - [ ] **2.5 Kho lệnh và hàng chờ gửi** — [TDD] — cỡ 2 giờ
   - File: `logic/store.js`, `tests/store.test.js` (dùng backend giả trong bộ nhớ có `rev`).
-  - Test viết trước: mỗi loại lệnh đổi state đúng; phát lệnh khi backend lỗi mạng → lệnh nằm trong outbox, giao diện vẫn thấy kết quả; mạng về → outbox rỗng, server đúng; gửi trùng một lệnh (đã commit nhưng mất phản hồi) → không cộng hai lần; server đổi `rev` giữa chừng → tải lại, áp lại, không mất thay đổi của bên nào; outbox đọc lại được sau "khởi động lại"; lệnh giữ đúng `day` lúc phát sinh dù gửi muộn; phiên offline không phát lệnh.
+  - Test viết trước: mỗi loại lệnh đổi state đúng; `sessionDone` làm deck xong Ngày 1 thì deck đổi tên theo mục 3.10 (deck thứ hai cùng ngày ra hậu tố `b`; deck đã xoá mềm không tính trùng; lệnh gửi muộn vẫn lấy tên theo `day` lúc phát sinh), `sessionDone` của deck ôn không đổi tên; phát lệnh khi backend lỗi mạng → lệnh nằm trong outbox, giao diện vẫn thấy kết quả; mạng về → outbox rỗng, server đúng; gửi trùng một lệnh (đã commit nhưng mất phản hồi) → không cộng hai lần; server đổi `rev` giữa chừng → tải lại, áp lại, không mất thay đổi của bên nào; outbox đọc lại được sau "khởi động lại"; lệnh giữ đúng `day` lúc phát sinh dù gửi muộn; phiên offline không phát lệnh.
   - Xong khi: `npm test` xanh.
 
 - [ ] **2.6 Nối Supabase và màn chuyển dữ liệu lần đầu** — [UI] — cỡ 2 giờ
@@ -682,6 +700,7 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13 → 
 | Streak: 7 luật + băng + cứu | `logic/streak.js` | `streak` |
 | Tiến độ chi tiết từng deck | `deckProgress` | `mastery` |
 | Định dạng nhập `từ: nghĩa`; cảnh báo từ trùng deck khác | `logic/decks.js` | `decks` |
+| Deck xong Ngày 1 tự đổi tên thành `DDMM`; ôn không đổi; trùng thêm `b`, `c`… | `day1Name`, `renameOnDay1`, `logic/store.js` (`sessionDone`) | `decks`, `store` |
 | Mỗi người chỉ đọc/ghi dữ liệu của mình | SQL RLS | tiêu chí tay 2.3, 2.17 |
 
 ---
@@ -765,6 +784,10 @@ Thử thêm ngoài checklist:
 - Giữ 2 dòng `normalize` trong `pullCloud`, đã gắn nhãn `FIX 11/11`.
 - Đồng ý xoá `restoreResetDecks` và `repairEarlyLearn`.
 - Đồng ý push (task 1.8).
+
+**Luật đổi tên deck (Khang 15/11)**
+- Đã thêm mục 3.10, `logic/decks.js` (`day1Name`, `renameOnDay1`), `tests/decks.test.js`. Phần nối vào app nằm ở lệnh `sessionDone` của task 2.5.
+- **Khang xem lại 5 chỗ người thực thi tự hiểu** (ghi ở mục 3.10): (1) ngày trong tên là ngày học, mốc 4h sáng; (2) chỉ đổi một lần, sau đó sửa tay được, deck cũ không đổi hồi tố; (3) trùng cả với deck cũ cùng `DDMM` năm trước; (4) hết `z` thì `-27`; (5) tên cũ không lưu lại, và v1 đang dùng hằng ngày KHÔNG tự đổi tên (deck xong Ngày 1 bằng v1 trong lúc chờ v2 vẫn giữ tên cũ). Muốn v1 cũng đổi tên thì phải vá `app.js` và ra tag `v1-live-2`: báo nếu cần.
 
 ---
 

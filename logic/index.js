@@ -5,3 +5,4 @@ export * from './migrate.js';
 export * from './schedule.js';
 export * from './streak.js';
 export * from './pace.js';
+export * from './decks.js';
