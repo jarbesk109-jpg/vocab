@@ -510,7 +510,7 @@ Làm trong `C:\Kingston\Vibe-coding\vocab`, nhánh `phase-1`.
   - Báo Khang: Phase 1 xong, chưa push. Khang cần (a) mở trang thật hiện tại → Cài đặt → Xuất backup và giữ file; (b) tự thử theo Phụ lục B; (c) trả lời đồng ý.
   - KHÔNG push.
 
-- [ ] **1.8 Push một lần (chỉ sau khi Khang đồng ý)** — cỡ 15 phút
+- [x] **1.8 Push một lần (chỉ sau khi Khang đồng ý)** — cỡ 15 phút — đã push `main`, tag `v1-live-1` (commit `f553b30`)
   - `git switch main`, `git merge --ff-only phase-1`, `git push origin main`. Bị từ chối thì DỪNG.
   - `git tag v1-live-1`, `git push origin v1-live-1`.
   - Đợi trang thật cập nhật, tải lại cứng (Ctrl+Shift+R) trên laptop và điện thoại, kiểm tra: dữ liệu còn nguyên, Hôm nay đúng, đồng bộ bằng mã vẫn chạy.
