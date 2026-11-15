@@ -1,6 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { studyDay } from '../../logic/index.js';
+import { authErrorText, useSession } from './auth';
 import { hrefOf, useRoute, type Route } from './router';
+import { Login } from './screens/Login';
+import { supabase } from './supabase';
 import { useTheme, type ThemeChoice } from './theme';
 
 const NAV: { route: Route; label: string; icon: ReactNode }[] = [
@@ -79,9 +82,43 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Theo máy' },
 ];
 
-function Settings() {
+function Account({ email }: { email: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function signOut() {
+    setBusy(true);
+    setError(null);
+    // Thành công: useSession nhận phiên rỗng và App tự về màn đăng nhập.
+    const { error } = await supabase.auth.signOut().catch(() => ({ error: { message: 'failed to fetch' } }));
+    if (error) {
+      setError(authErrorText(error).replace('Không đăng nhập được', 'Không đăng xuất được'));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card account">
+      <div className="field">
+        <span className="field-label">Tài khoản</span>
+        <span className="account-email">{email}</span>
+      </div>
+      {error && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      )}
+      <button className="btn" type="button" onClick={signOut} disabled={busy}>
+        {busy ? 'Đang đăng xuất…' : 'Đăng xuất'}
+      </button>
+    </div>
+  );
+}
+
+function Settings({ email }: { email: string }) {
   const [theme, setTheme] = useTheme();
   return (
+    <>
     <div className="card">
       <fieldset className="field">
         <legend className="field-label">Giao diện</legend>
@@ -95,10 +132,23 @@ function Settings() {
         </div>
       </fieldset>
     </div>
+    <Account email={email} />
+    </>
   );
 }
 
+/** Cửa vào: chưa đăng nhập thì chỉ thấy màn đăng nhập; đăng nhập rồi mới vào app. */
 export function App() {
+  const session = useSession();
+  // Giữ theme đúng với lựa chọn đã lưu ở mọi màn (kể cả màn đăng nhập, và khi máy đổi sáng/tối).
+  useTheme();
+
+  if (session === undefined) return <div className="boot" aria-busy="true" />; // đang đọc phiên đã lưu: chưa vẽ gì để khỏi nháy
+  if (session === null) return <Login />;
+  return <Shell email={session.user.email ?? ''} />;
+}
+
+function Shell({ email }: { email: string }) {
   const route = useRoute();
   const shown = useRef(route);
 
@@ -111,9 +161,6 @@ export function App() {
     document.querySelector<HTMLElement>('.screen-title')?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [route]);
-
-  // Giữ theme đúng với lựa chọn đã lưu ngay cả khi chưa mở màn Cài đặt (ví dụ máy đổi sáng/tối).
-  useTheme();
 
   return (
     <div className="app">
@@ -139,7 +186,7 @@ export function App() {
         <div className="main-inner">
           {route === 'today' && (
             <Screen route="today" sub={formatStudyDay(studyDay(Date.now()))}>
-              <Empty title="Chưa có gì để học">Danh sách hôm nay sẽ hiện ở đây sau khi đăng nhập và chuyển dữ liệu.</Empty>
+              <Empty title="Chưa có gì để học">Danh sách hôm nay sẽ hiện ở đây sau khi chuyển dữ liệu từ bản cũ sang.</Empty>
             </Screen>
           )}
           {route === 'decks' && (
@@ -149,7 +196,7 @@ export function App() {
           )}
           {route === 'settings' && (
             <Screen route="settings">
-              <Settings />
+              <Settings email={email} />
             </Screen>
           )}
         </div>

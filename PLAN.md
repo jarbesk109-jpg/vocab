@@ -921,6 +921,16 @@ Thử thêm ngoài checklist:
   - `/vocab/v2/`: tiêu đề Recall, `index.html` khớp bản build ở máy, 86/86 mục kiểm của 2.1 đạt.
 - Chưa kiểm được (trình duyệt headless là hồ sơ trống, không có dữ liệu của Khang): dữ liệu thật còn nguyên, màn Hôm nay đúng, đồng bộ bằng mã, và điện thoại. Khang xem giúp sau khi Ctrl+Shift+R.
 - Từ đây: mỗi lần push `main` là một lần deploy (test đỏ hoặc build lỗi thì không deploy). v1 chỉ đổi khi sửa file `V1_TAG`. Theo mục 0 được push sau mỗi task; nhánh `phase-2` đã gộp hết vào `main`.
+- **Khang xác nhận (15/11):** v1 và v2 trên trang thật ổn.
+
+**Task 2.3 (15/11): code và SQL đã viết, CHƯA tick, chờ Khang làm phần Dashboard**
+- File: `supabase/schema.sql`, `v2/src/supabase.ts`, `v2/src/screens/Login.tsx`; thêm `v2/src/auth.ts` (đọc phiên đăng nhập, đổi lỗi sang tiếng Việt), `supabase/check.sql` (tự kiểm RLS và `save_state` trong SQL Editor, mọi thay đổi thử tự huỷ). Thêm gói `@supabase/supabase-js` 2.119.
+- `schema.sql` so với bản nháp ở mục 3.9: chạy lại được (`create table if not exists`, `drop policy if exists`); thêm `grant` trên 3 bảng cho `authenticated`; và trong `save_state`, dòng MỚI (rev 0) mà đã tồn tại thì báo `REV_CONFLICT` thay vì lỗi trùng khoá. Lý do: lần ghi đầu tiên đã vào server nhưng mất phản hồi thì lần gửi lại phải nhận `REV_CONFLICT` để store tải lại, nếu không sẽ kẹt mãi ở lỗi "mạng". Hành vi "chỉ ghi khi không ai ghi chen, xung đột thì không ghi dòng nào" giữ nguyên.
+- **SQL chưa được chạy lần nào** (máy không có Postgres): `schema.sql` và `check.sql` mới được đọc soát. Lần chạy đầu trong SQL Editor nếu báo lỗi cú pháp thì gửi lại nguyên văn lỗi.
+- App giờ có cửa vào: chưa đăng nhập chỉ thấy màn Đăng nhập (không có đăng ký); đăng nhập rồi mới thấy app. Cài đặt có thẻ Tài khoản (email + Đăng xuất). Phiên lưu ở `localStorage` `recall.auth`.
+- Đã thử bằng Chrome headless trên `npm run dev` (19/19 mục đạt): màn đăng nhập ở 320–1280px; sai email/mật khẩu (gọi thật tới Supabase) → "Email hoặc mật khẩu không đúng."; mất mạng → báo lỗi mạng; có phiên đã lưu → vào thẳng app, tải lại vẫn ở trong; Đăng xuất → về màn đăng nhập, phiên bị xoá. Phần "có phiên" dùng một phiên GIẢ vì chưa có tài khoản thật: đăng nhập ĐÚNG bằng tài khoản thật chưa thử được.
+- Trạng thái Supabase lúc viết (đọc bằng khoá công khai): 3 bảng mới chưa có; **đăng ký mới đang MỞ** (`disable_signup: false`), Khang cần tắt.
+- Việc của Khang trong Dashboard, theo thứ tự: (1) Authentication → Users → Add user (email + mật khẩu, Auto Confirm); (2) tắt cho phép đăng ký mới; (3) SQL Editor: chạy `supabase/schema.sql`; (4) SQL Editor: chạy `supabase/check.sql`, mọi dòng phải `đạt`; (5) báo lại. Sau đó người thực thi kiểm từ ngoài bằng khoá công khai (đọc ra 0 dòng, ghi bị từ chối, đăng ký bị tắt) và Khang đăng nhập thử bằng tài khoản thật.
 
 ---
 

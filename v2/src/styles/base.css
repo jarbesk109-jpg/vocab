@@ -302,6 +302,126 @@ textarea {
   outline-offset: 2px;
 }
 
+/* ---------- Ô nhập, nút, thông báo ---------- */
+
+.input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  /* 1rem trở lên để iOS không tự phóng to trang khi bấm vào ô nhập */
+  font-size: var(--text-md);
+}
+.input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--focus);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+.alert {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bad-soft);
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--bad);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+/* ---------- Đăng nhập ---------- */
+
+.boot {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+}
+.login-card {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 24rem);
+  box-shadow: var(--shadow);
+  animation: screen-in var(--dur) var(--ease-out);
+}
+.login-head {
+  display: grid;
+  gap: var(--space-1);
+}
+.login-brand {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.login-brand span {
+  color: var(--accent-text);
+}
+.login-card .field-label {
+  margin-bottom: 0;
+}
+.login-card .btn {
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+/* ---------- Tài khoản (Cài đặt) ---------- */
+
+.account {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+.account .field-label {
+  margin-bottom: 0;
+}
+.account-email {
+  color: var(--ink-2);
+}
+.account .alert {
+  justify-self: stretch;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
