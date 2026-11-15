@@ -694,3 +694,44 @@ describe('createStore: xoá mềm và thay thế toàn bộ', () => {
     expect(backend.db.snapshots[0].data.sets[1].cards[0].st.prod.r).toBe(2); // bản sao có thay đổi của máy kia
   });
 });
+
+describe('applyCommand: phiên Viết ghi vào lịch sử deck (task 2.12a)', () => {
+  const write = (deckId, pct, over = {}) => cmd('sessionDone', { deckId, mode: 'write', pct, full: false, ...over });
+
+  it('sessionDone mode write: thêm { date, pct, mode: "write" } vào history; không đổi mốc deck ôn', () => {
+    const s = baseState();
+    const out = applyCommand(s, write('id-r', 66.666));
+    const before = deckOf(s, 'id-r');
+    const d = deckOf(out, 'id-r');
+    expect(d.history).toEqual([...before.history, { date: T, pct: 67, mode: 'write' }]);
+    expect(d).toMatchObject({ stageIdx: before.stageIdx, anchor: before.anchor, lastCompleted: before.lastCompleted, name: 'r' });
+    expect(out.meta.activity).toEqual({}); // Viết ở deck ôn không tính lượt
+    expect(deckOf(s, 'id-r').history).toEqual(before.history); // không sửa đầu vào
+  });
+  it('Viết hai lần một ngày: ghi cả hai; Viết sau khi deck đã xong lượt hôm nay vẫn ghi', () => {
+    let s = applyCommand(baseState(), cmd('sessionDone', { deckId: 'id-r', mode: 'test', pct: 100, full: true }));
+    s = applyCommand(s, write('id-r', 80));
+    s = applyCommand(s, write('id-r', 90));
+    expect(deckOf(s, 'id-r').history.slice(-3)).toEqual([
+      { date: T, pct: 100, mode: 'test', stage: 2 },
+      { date: T, pct: 80, mode: 'write' },
+      { date: T, pct: 90, mode: 'write' },
+    ]);
+    expect(deckOf(s, 'id-r').stageIdx).toBe(3);
+  });
+  it('deck mới Viết đúng hết → xong Ngày 1 (đổi tên, mốc 1) và có dòng Viết trong history', () => {
+    let s = baseState();
+    s = applyCommand(s, answer('id-k2', 'k2-1'));
+    s = applyCommand(s, write('id-k2', 100));
+    expect(deckOf(s, 'id-k2')).toMatchObject({ name: '1511', stageIdx: 1, startedAt: T });
+    expect(deckOf(s, 'id-k2').history).toEqual([{ date: T, pct: 100, mode: 'write' }]);
+  });
+  it('Học, Kiểm tra, flashcard không thêm dòng Viết', () => {
+    const s = baseState();
+    for (const mode of ['learn', 'flash']) {
+      expect(deckOf(applyCommand(s, cmd('sessionDone', { deckId: 'id-r', mode, pct: 100 })), 'id-r').history).toEqual(deckOf(s, 'id-r').history);
+    }
+    const t = applyCommand(s, cmd('sessionDone', { deckId: 'id-r', mode: 'test', pct: 100, full: true }));
+    expect(deckOf(t, 'id-r').history.filter((h) => h.mode === 'write')).toEqual([]);
+  });
+});

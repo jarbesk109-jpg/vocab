@@ -583,8 +583,8 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Test viết trước: Học với 2 bước: đúng `mcq` rồi đúng `write` mới tính xong; sai thì về bước đầu, gắn sao, gặp lại sau 2 câu; chỉ bật `write` thì 1 bước; mẻ nhỏ ưu tiên thẻ chưa đúng hôm nay; Viết: sai phải gõ lại, điểm tính lần đầu; Kiểm tra: `pct` = đúng / tổng, "Tôi đã gõ đúng" cộng lại điểm; tuần tự hoá rồi khôi phục giữa chừng cho cùng trạng thái; trắc nghiệm có đúng 1 đáp án đúng và các đáp án nhiễu không trùng nghĩa đáp án đúng.
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.12a Tiến độ từng học phần: logic** — [TDD] — cỡ 45 phút
-  - File: `logic/mastery.js`, `tests/mastery.test.js`.
+- [x] **2.12a Tiến độ từng học phần: logic** — [TDD] — cỡ 45 phút
+  - File: `logic/mastery.js`, `tests/mastery.test.js`; `logic/store.js`, `tests/store.test.js` (Khang 15/11: phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`, làm luôn ở task này).
   - Test viết trước: mục 3.7; với file thật: `1608` thuộc cả hai chiều 100%, `stagesPassed` đã qua Mới, +1, +3, +7; `2208` 0% và chưa qua mốc nào.
   - Xong khi: `npm test` xanh.
 
@@ -644,7 +644,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
 - [ ] **2.12b Tiến độ từng học phần: giao diện** — [UI] — cỡ 1,25 giờ (logic ở 2.12a)
   - File: `v2/src/screens/Decks.tsx`, `DeckDetail.tsx`.
   - Hành vi: mỗi deck hiện % thuộc chiều Việt→Anh và chiều Anh→Việt (hai thanh riêng), Viết đã làm chưa và bao nhiêu %, Kiểm tra lần gần nhất và cao nhất, dải 5 mốc Mới/+1/+3/+7/+16 đánh dấu mốc đã qua, lần ôn kế. Màn chi tiết có danh sách thẻ kèm trạng thái từng chiều và sao.
-  - Từ task này, phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`.
+  - Phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`: đã làm ở 2.12a (lệnh `sessionDone`).
 
 - [ ] **2.13b Soạn deck: giao diện** — [UI] — cỡ 1 giờ (logic ở 2.13a)
   - File: `v2/src/screens/DeckEditor.tsx`.
@@ -864,6 +864,14 @@ Thử thêm ngoài checklist:
   - Đáp án nhiễu của trắc nghiệm và đúng/sai bỏ mọi thẻ trùng nghĩa với đáp án đúng theo cả hai phía (v1 lấy ngẫu nhiên, có thể ra hai lựa chọn cùng đúng). Deck dưới 4 thẻ thì ít lựa chọn hơn.
   - Nhắc bàn phím tiếng Việt (`keyboardMismatch`) nằm trong `sessionAnswer`: trả `feedback = { keyboard: true }`, không chấm, không đổi trạng thái; áp dụng cả lúc gõ lại ở chế độ Viết.
   - Thẻ của câu hiện tại bị xoá khỏi deck giữa phiên: `sessionQuestion` trả `null`, không sập; giao diện nên kết thúc phiên.
+- **Khang duyệt (15/11)** mọi chỗ tự quyết ở 2.5 và 2.8.
+
+**Task 2.12a (15/11)**
+- `deckProgress(set, today, kpi = 90)`: thêm tham số thứ ba `kpi` (mục 3.7 cần KPI để biết bài nào "đạt" nhưng chữ ký không có). Giao diện truyền `meta.settings.kpi`.
+- `lastTest`, `bestTest`, `lastWrite` là `{ date, pct }` hoặc `null`; `bestTest` hoà điểm thì lấy lần gần nhất. `stagesPassed[i]` là `{ passed, date }`.
+- Ngày qua mốc Mới: lấy `startedAt` nếu có (xong Ngày 1 bằng Học thì không có bài Kiểm tra nào), không thì bài Kiểm tra `stage 0` đạt KPI. Deck lùi mốc rồi qua lại: lấy lần qua cuối.
+- Phiên Viết ghi `history` nằm trong lệnh `sessionDone` của `logic/store.js` (không đụng `applySessionResult`): mỗi phiên Viết làm HẾT một lượt là một dòng `{ date, pct (làm tròn), mode: 'write' }`, kể cả khi deck không đổi mốc.
+- **Hệ quả cần biết:** `startedDay` (mục 3.2) lấy ngày sớm nhất trong `history`. Deck mới mà làm hết một lượt Viết nhưng CHƯA xong Ngày 1 (còn thẻ sai) thì từ nay có `history`, nên được tính là "đã bắt đầu deck mới hôm đó" khi xét trần 3 ngày. Trước đây trường hợp này không tính. Người thực thi thấy hợp lý (đúng là vừa bắt đầu một deck mới) nên không sửa mục 3.2; Khang không đồng ý thì báo.
 
 ---
 

@@ -134,7 +134,12 @@ export function applyCommand(state, cmd) {
       const res = applySessionResult(state.decks[i], { mode: cmd.mode, pct: cmd.pct, full: !!cmd.full }, day, kpi);
       // mục 3.10: xong Ngày 1 thì đổi tên; so trùng với các deck KHÁC chưa xoá
       const others = state.decks.filter((_, j) => j !== i).map((d) => d.name);
-      const next = withDeck(state, i, renameOnDay1(res, others, day));
+      let deck = renameOnDay1(res, others, day);
+      // phiên Viết luôn để lại một dòng trong lịch sử deck (mục 3.7 `lastWrite`), kể cả khi không đổi mốc
+      if (cmd.mode === 'write') {
+        deck = { ...deck, history: [...(deck.history || []), { date: day, pct: Math.round(cmd.pct), mode: 'write' }] };
+      }
+      const next = withDeck(state, i, deck);
       if (!res.credit) return next;
       const activity = meta.activity || {};
       const d = creditedOn(activity, day);
