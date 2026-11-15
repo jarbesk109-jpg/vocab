@@ -578,7 +578,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - `logic/store.js` vẫn thuần: nơi lưu outbox/cache (`localStorage`) và backend được TRUYỀN VÀO qua tham số, test dùng bản giả trong bộ nhớ.
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.8 Máy trạng thái phiên Học, Viết, Kiểm tra** — [TDD] — cỡ 2 giờ
+- [x] **2.8 Máy trạng thái phiên Học, Viết, Kiểm tra** — [TDD] — cỡ 2 giờ
   - File: `logic/session.js`, `tests/session.test.js`.
   - Test viết trước: Học với 2 bước: đúng `mcq` rồi đúng `write` mới tính xong; sai thì về bước đầu, gắn sao, gặp lại sau 2 câu; chỉ bật `write` thì 1 bước; mẻ nhỏ ưu tiên thẻ chưa đúng hôm nay; Viết: sai phải gõ lại, điểm tính lần đầu; Kiểm tra: `pct` = đúng / tổng, "Tôi đã gõ đúng" cộng lại điểm; tuần tự hoá rồi khôi phục giữa chừng cho cùng trạng thái; trắc nghiệm có đúng 1 đáp án đúng và các đáp án nhiễu không trùng nghĩa đáp án đúng.
   - Xong khi: `npm test` xanh.
@@ -849,6 +849,21 @@ Thử thêm ngoài checklist:
   - `replaceAll`: tải bản server mới nhất, ghi bản sao (gồm cả lệnh đang chờ), rồi mới thay. Deck cũ không có trong dữ liệu mới thành xoá mềm (khôi phục được). Lệnh đang chờ bị bỏ. Gặp xung đột lúc ghi thì báo lỗi `conflict` để người dùng bấm lại, không tự thử lại.
   - Xung đột liên tục quá 3 lần tải lại: `flush` trả `{ ok: false, error: 'conflict' }`, lệnh ở lại outbox.
 - "Học tiếp" (phiên dang dở): store không giữ; trạng thái phiên tuần tự hoá ở task 2.8, giao diện lưu theo máy.
+
+**Task 2.8 (15/11)** — hình dạng mà màn Học / Kiểm tra (2.10, 2.11) phải theo:
+- Mở phiên: `startLearn(cards, { deckId, dir, mcq, write, batch }, today, seed)`, `startWrite(cards, { deckId, dir }, seed)`, `startTest(cards, { deckId, full, count, answerIn, typeProd, typeRecog }, seed)`. Trạng thái trả về là JSON thuần: lưu nguyên vào `localStorage` để "Học tiếp".
+- Mỗi bước: `sessionQuestion(state, cards)` (câu để vẽ, không kèm đáp án), `sessionAnswer(state, cards, input)`, `sessionNext(state, cards)` (nút "Tiếp"), `sessionOverride(state, cards)` (phím `\`), `sessionSummary(state)` (tiến độ, kết quả, danh sách câu sai). `input`: chuỗi (tự luận), chỉ số lựa chọn từ 0 (trắc nghiệm), `true`/`false` (đúng/sai).
+- Ba hàm thao tác trả về `{ state, cmds, feedback }`. Giao diện đưa từng phần tử `cmds` vào `dispatch` của phiên (`store.startSession()`), rồi `flush()`. Lệnh `sessionDone` tự có trong `cmds` của câu cuối.
+- Giữ đúng v1:
+  - Học, trắc nghiệm: ghi ngay đúng/sai. Học, tự luận sai: hiện đáp án, CHƯA ghi; "Tiếp" mới ghi sai; phím `\` là "gõ nhầm phím" (tính đúng, đếm typo).
+  - Viết: sai thì ghi sai rồi bắt gõ lại; gõ lại đúng không cộng điểm; phím `\` là "Tôi đã gõ đúng" (hoàn lại, cộng điểm).
+  - Xếp lại hàng đợi Học: sai gặp lại sau 2 câu, đúng chưa đủ bước gặp lại sau 3 câu.
+- Khác v1, theo mục 3.8 / task 2.11: Kiểm tra sai ở MỌI loại câu đều dừng lại hiện đáp án, chờ "Tiếp" (v1 tự nhảy sau trắc nghiệm và đúng/sai).
+- Người thực thi tự quyết:
+  - "Tôi đã gõ đúng" chỉ có ở câu tự luận; trắc nghiệm và đúng/sai sai thì chỉ có "Tiếp" (như v1).
+  - Đáp án nhiễu của trắc nghiệm và đúng/sai bỏ mọi thẻ trùng nghĩa với đáp án đúng theo cả hai phía (v1 lấy ngẫu nhiên, có thể ra hai lựa chọn cùng đúng). Deck dưới 4 thẻ thì ít lựa chọn hơn.
+  - Nhắc bàn phím tiếng Việt (`keyboardMismatch`) nằm trong `sessionAnswer`: trả `feedback = { keyboard: true }`, không chấm, không đổi trạng thái; áp dụng cả lúc gõ lại ở chế độ Viết.
+  - Thẻ của câu hiện tại bị xoá khỏi deck giữa phiên: `sessionQuestion` trả `null`, không sập; giao diện nên kết thúc phiên.
 
 ---
 
