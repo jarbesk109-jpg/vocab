@@ -8,3 +8,4 @@ export * from './pace.js';
 export * from './decks.js';
 export * from './answers.js';
 export * from './session.js';
+export * from './store.js';

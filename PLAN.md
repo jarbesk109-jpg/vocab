@@ -572,7 +572,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Test viết trước: mục 3.6 (`To Reduce.` = `reduce`; `lead to / result in` nhận một trong hai; `chinh phu` = `chính phủ`; `dan den` = `dẫn đến`; gõ một trong hai nghĩa của `thậm chí, ngay cả`; `bumpCard` đúng/sai; `overrideRight` hoàn lại; `keyboardMismatch`) và mục 3.8 (`buildTest`).
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.5 Kho lệnh và hàng chờ gửi** — [TDD] — cỡ 2 giờ
+- [x] **2.5 Kho lệnh và hàng chờ gửi** — [TDD] — cỡ 2 giờ
   - File: `logic/store.js`, `tests/store.test.js` (dùng backend giả trong bộ nhớ có `rev`).
   - Test viết trước: mỗi loại lệnh đổi state đúng; `sessionDone` làm deck xong Ngày 1 thì deck đổi tên theo mục 3.10 (deck thứ hai cùng ngày ra hậu tố `b`; deck đã xoá mềm không tính trùng; lệnh gửi muộn vẫn lấy tên theo `day` lúc phát sinh), `sessionDone` của deck ôn không đổi tên; phát lệnh khi backend lỗi mạng → lệnh nằm trong outbox, giao diện vẫn thấy kết quả; mạng về → outbox rỗng, server đúng; gửi trùng một lệnh (đã commit nhưng mất phản hồi) → không cộng hai lần; server đổi `rev` giữa chừng → tải lại, áp lại, không mất thay đổi của bên nào; outbox đọc lại được sau "khởi động lại"; lệnh giữ đúng `day` lúc phát sinh dù gửi muộn; phiên offline không phát lệnh.
   - `logic/store.js` vẫn thuần: nơi lưu outbox/cache (`localStorage`) và backend được TRUYỀN VÀO qua tham số, test dùng bản giả trong bộ nhớ.
@@ -834,6 +834,21 @@ Thử thêm ngoài checklist:
 - `mix` xoay vòng theo thứ tự `write`, `mcq`, `tf` (đúng v1).
 - Bài rút gọn (đặc tả chỉ ghi `count` và `answerIn`): `en`/`vi` hỏi tối đa `n` câu, không lặp thẻ; `both` lấy `count` câu đầu của một bài đủ, nên chưa quá `n` câu thì không lặp thẻ, quá `n` mới hỏi chiều còn lại và vẫn giữ khoảng cách, tối đa `2n`. `count` thiếu hoặc ≤ 0 → bài rỗng.
 - Thêm hai hàm phụ có export: `shuffled(arr, rng)`, `minGap(n)`.
+
+**Task 2.5 (15/11)** — hình dạng cụ thể mà các task giao diện (2.6 trở đi) phải theo:
+- `createStore({ backend, storage, newId, today, isOnline })` → `getState()`, `getStatus()`, `subscribe(fn)`, `load()`, `dispatch(cmd)`, `startSession()`, `flush()`, `replaceAll(data, reason)`. `logic/store.js` không tự đụng `localStorage`, mạng hay giờ máy: tất cả truyền vào.
+- **Backend phải có** (viết ở 2.6, `supabaseBackend.ts`): `load()` → `{ meta, metaRev, decks: [{ id, data, rev, deleted }] }` (tài khoản trống: `{ meta: null, metaRev: 0, decks: [] }`; `deleted` = `deleted_at` khác null; phải trả CẢ deck đã xoá); `save(meta, metaRev, rows)` gọi `save_state`, ném lỗi có `code = 'REV_CONFLICT'` khi rev lệch (mọi lỗi khác store coi là lỗi mạng); `snapshot(reason, data)` ghi một dòng `snapshots`.
+- State là `{ meta, decks, deleted }`: `decks` là deck chưa xoá (theo `deckOrder`), `deleted` là deck xoá mềm (để màn Cài đặt khôi phục).
+- `dispatch` chỉ cho lệnh vào outbox, KHÔNG tự gửi. Giao diện gọi `flush()` sau mỗi lệnh, khi `online`, khi focus, mỗi 30 giây. Gọi chồng lên nhau chỉ chạy một lượt.
+- Trường của từng lệnh: `answer { deckId, cardId, dir, ok, typo? }`, `override { deckId, cardId, dir }`, `sessionDone { deckId, mode, pct, full? }`, `useFreeze {}`, `star { deckId, cardId, starred }`, `deckUpsert { deck }`, `deckDelete { deckId }`, `settings { patch }`. Store tự gắn `id` và `day`.
+- Người thực thi tự quyết (đặc tả không ghi):
+  - `deckUpsert` với deck ĐÃ CÓ chỉ đổi tên và nội dung thẻ (`term`, `def`, `note`, thêm/bớt/đổi thứ tự thẻ); mốc, lịch, lịch sử, điểm từng thẻ, sao luôn giữ theo bản đang có. Lý do: bản soạn mở từ trước không được đè mất kết quả học ở máy khác. `deckUpsert` với id của deck đã xoá = khôi phục.
+  - `override` không cộng thêm câu vào hoạt động (đúng v1).
+  - Lệnh trỏ tới deck/thẻ không còn (máy khác đã xoá) thì vô hiệu, không báo lỗi.
+  - Phiên offline: `startSession()` xem mạng lúc BẮT ĐẦU phiên. Offline thì cả phiên không ghi, kể cả khi mạng có lại giữa chừng. Lệnh ngoài phiên (sửa deck, cài đặt) lúc offline vẫn vào outbox và gửi khi có mạng.
+  - `replaceAll`: tải bản server mới nhất, ghi bản sao (gồm cả lệnh đang chờ), rồi mới thay. Deck cũ không có trong dữ liệu mới thành xoá mềm (khôi phục được). Lệnh đang chờ bị bỏ. Gặp xung đột lúc ghi thì báo lỗi `conflict` để người dùng bấm lại, không tự thử lại.
+  - Xung đột liên tục quá 3 lần tải lại: `flush` trả `{ ok: false, error: 'conflict' }`, lệnh ở lại outbox.
+- "Học tiếp" (phiên dang dở): store không giữ; trạng thái phiên tuần tự hoá ở task 2.8, giao diện lưu theo máy.
 
 ---
 
