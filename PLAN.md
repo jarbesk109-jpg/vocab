@@ -614,13 +614,13 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Tiêu chí tay: `/vocab/` vẫn là v1 y như trước, dữ liệu còn; `/vocab/v2/` mở được khung v2.
   - Xong khi: cả hai địa chỉ chạy. Từ đây được push sau mỗi task.
 
-- [ ] **2.3 Supabase: tài khoản, bảng mới, RLS, màn đăng nhập** — [UI] — cỡ 1,5 giờ
+- [x] **2.3 Supabase: tài khoản, bảng mới, RLS, màn đăng nhập** — [UI] — cỡ 1,5 giờ
   - Việc của Khang trong Dashboard: Authentication → Users → Add user (email + mật khẩu, Auto Confirm) → tắt cho phép đăng ký mới; SQL Editor → chạy `supabase/schema.sql`.
   - File: `supabase/schema.sql` (mục 3.9), `v2/src/supabase.ts` (URL + publishable key lấy từ `app.js` của v1; đây là khoá công khai, RLS mới là lớp bảo vệ), `v2/src/screens/Login.tsx`. Thêm `@supabase/supabase-js`.
   - Tiêu chí tay: đăng nhập đúng thì vào app, sai thì báo lỗi rõ; tải lại trang vẫn đăng nhập; Đăng xuất hoạt động; chưa đăng nhập mà `select` bảng `decks` bằng publishable key thì ra 0 dòng và `insert` bị từ chối (thử trong console).
   - Xong khi: tiêu chí đạt.
 
-- [ ] **2.6 Nối Supabase và màn chuyển dữ liệu lần đầu** — [UI] — cỡ 2 giờ
+- [x] **2.6 Nối Supabase và màn chuyển dữ liệu lần đầu** — [UI] — cỡ 2 giờ
   - File: `v2/src/data/supabaseBackend.ts` (`load` = `select` hai bảng; `save` = `rpc('save_state')`, ánh xạ lỗi `REV_CONFLICT`), `v2/src/data/useStore.ts`, `v2/src/screens/Import.tsx`.
   - Hành vi: tài khoản chưa có dữ liệu → màn chuyển dữ liệu. Nguồn 1: đọc thẳng `localStorage` `vocabvip.v1` (v1 và v2 cùng origin); nguồn 2: chọn file JSON. Trước `toV2`, chạy `renameDay1OnImport` (mục 3.10): deck xong Ngày 1 trên v1 từ 15/11 đổi tên theo ngày xong Ngày 1 thật. Hiện tóm tắt "N deck · N thẻ · N lượt trả lời · học gần nhất …" kèm danh sách deck được đổi tên ("`2208` → `1511`") rồi mới ghi. Tài khoản đã có dữ liệu: so `compareFreshness`, cảnh báo nếu bản nhập cũ hơn, ghi `snapshots` trước khi thay.
   - Tiêu chí tay: nhập file thật → 8 deck, 175 thẻ, 713 lượt; tải lại trang và mở trên điện thoại thấy cùng dữ liệu; tắt mạng (DevTools offline) rồi phát một thay đổi → thấy trạng thái "đang chờ gửi", bật mạng → tự gửi.
@@ -958,6 +958,7 @@ Thử thêm ngoài checklist:
   4. DevTools → Network → Offline, đổi KPI (ví dụ 90 → 89, Enter) → thấy "đang chờ gửi"; bỏ Offline → tự gửi, về "Đã lưu trên máy chủ."; đổi lại 90.
   5. Supabase Dashboard → Table Editor: `meta` 1 dòng, `decks` đủ số deck.
   6. Điện thoại chỉ thử được sau khi push (cần Khang cho phép push `main`, sẽ deploy v2 có màn đăng nhập lên `/vocab/v2/`; v1 ở `/vocab/` không đổi).
+- **Khang xác nhận (15/11):** đã thử bằng tài khoản thật ở máy: chuyển đủ 8 deck, 175 thẻ; F5 và đăng nhập lại vẫn giữ nguyên. Duyệt 3 thứ thêm sớm (ô KPI, thẻ Dữ liệu, danh sách Học phần). Bảo tick 2.3 và 2.6, push `main`. Khang không nhắc tới bước 1 (ghi bằng khoá công khai bị từ chối) và bước 4 (mất mạng → chờ gửi) nên hai bước đó coi như chưa có kết quả với Supabase thật.
 
 ---
 
