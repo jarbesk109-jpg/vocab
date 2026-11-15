@@ -567,7 +567,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Test viết trước: `toV1(toV2(x))` bằng `x` với file thật; `toV2` giữ 8 deck, 175 thẻ, 713, 27 `_prevStreak`, thứ tự deck; `planToday` trên dữ liệu sau `toV2` ở 11/11 ra đúng bảng mục 3.2; `compareFreshness`: cùng số thẻ nhưng ít lượt trả lời hơn → cảnh báo; ngày học gần nhất cũ hơn → cảnh báo; giống hệt → không cảnh báo.
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.7 Chấm đáp án và dựng bài Kiểm tra** — [TDD] — cỡ 1,5 giờ
+- [x] **2.7 Chấm đáp án và dựng bài Kiểm tra** — [TDD] — cỡ 1,5 giờ
   - File: `logic/answers.js`, `logic/session.js` (`mulberry32`, `buildTest`), `tests/answers.test.js`, `tests/session.test.js`.
   - Test viết trước: mục 3.6 (`To Reduce.` = `reduce`; `lead to / result in` nhận một trong hai; `chinh phu` = `chính phủ`; `dan den` = `dẫn đến`; gõ một trong hai nghĩa của `thậm chí, ngay cả`; `bumpCard` đúng/sai; `overrideRight` hoàn lại; `keyboardMismatch`) và mục 3.8 (`buildTest`).
   - Xong khi: `npm test` xanh.
@@ -827,6 +827,13 @@ Thử thêm ngoài checklist:
 - `decks` của `toV2` là MẢNG các deck (đúng thứ tự `sets`), dùng lại chính các đối tượng deck, không sao chép sâu.
 - `toV1`: deck không có trong `deckOrder` (ví dụ vừa tạo ở máy khác) xếp cuối chứ không bị bỏ; id trong `deckOrder` mà không còn deck thì bỏ qua. Đặc tả không nói tới hai trường hợp này; chọn cách không bao giờ làm mất deck.
 - `compareFreshness(a, b)` nhận hai bản dữ liệu dạng v1, trả về mảng `{ kind: 'cards' | 'answers' | 'last', a, b }` (đúng 3 phép so của v1); chữ cảnh báo tiếng Việt để màn chuyển dữ liệu (2.6) dựng.
+
+**Task 2.7 (15/11)**
+- `bumpCard`, `overrideRight` trong `logic/answers.js` là hàm THUẦN: trả về thẻ mới, không sửa thẻ truyền vào (v1 sửa tại chỗ). Phép tính giữ đúng v1. Gắn sao khi sai nằm ngay trong `bumpCard` (v1 để ở từng màn).
+- Giữ đúng một hành vi của v1 có thể gây ngạc nhiên: chiều Việt→Anh KHÔNG nhận cả chuỗi (`lead to / result in` gõ nguyên chuỗi là sai, phải gõ một trong hai); chiều Anh→Việt thì nhận cả chuỗi. Đã có test khoá lại.
+- `mix` xoay vòng theo thứ tự `write`, `mcq`, `tf` (đúng v1).
+- Bài rút gọn (đặc tả chỉ ghi `count` và `answerIn`): `en`/`vi` hỏi tối đa `n` câu, không lặp thẻ; `both` lấy `count` câu đầu của một bài đủ, nên chưa quá `n` câu thì không lặp thẻ, quá `n` mới hỏi chiều còn lại và vẫn giữ khoảng cách, tối đa `2n`. `count` thiếu hoặc ≤ 0 → bài rỗng.
+- Thêm hai hàm phụ có export: `shuffled(arr, rng)`, `minGap(n)`.
 
 ---
 
