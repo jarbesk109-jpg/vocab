@@ -1,4 +1,6 @@
-// Việc trên deck (PLAN.md mục 3.10; `parseCards`, `findDupTerms` thêm ở task 2.13a).
+// Việc trên deck: đổi tên khi xong Ngày 1 (PLAN.md mục 3.10), đọc danh sách dán vào, tìm từ trùng.
+
+import { norm } from './answers.js';
 
 /** Tên để so trùng: bỏ khoảng trắng hai đầu, chữ thường. Không phải chuỗi → ''. */
 function nameKey(s) {
@@ -64,4 +66,67 @@ export function renameDay1OnImport(sets, fromDay = DAY1_RENAME_FROM) {
     renamed.push({ id: set.id, from: set.name, to: name });
   }
   return { sets: out, renamed };
+}
+
+/**
+ * Đọc danh sách dán vào, mỗi dòng một thẻ dạng `từ: nghĩa` (định dạng nhập của v1, không đổi).
+ * Tách ở dấu `:` ĐẦU TIÊN; bỏ dòng trống; dòng không có `:`, thiếu từ hoặc thiếu nghĩa là dòng lỗi.
+ * Thẻ trả về chỉ có `term`, `def`; nơi gọi tự gắn `id`.
+ * @param {string} text
+ * @returns {{ cards: { term: string, def: string }[], bad: number, badLines: string[] }}
+ */
+export function parseCards(text) {
+  const cards = [];
+  const badLines = [];
+  const lines = String(text ?? '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    const idx = line.indexOf(':');
+    const term = idx < 0 ? '' : line.slice(0, idx).trim();
+    const def = idx < 0 ? '' : line.slice(idx + 1).trim();
+    if (term && def) cards.push({ term, def });
+    else badLines.push(line);
+  }
+  return { cards, bad: badLines.length, badLines };
+}
+
+/**
+ * Các thẻ đang soạn mà từ (`term`) đã có ở deck KHÁC. Chuyển từ v1 (bản vá 13/09): so nguyên chuỗi
+ * từ theo `norm`; từ có ở nhiều deck thì báo deck đứng trước; mỗi từ chỉ báo một lần.
+ * @param {{ term: string }[]} cards thẻ đang soạn
+ * @param {any[]} decks mọi deck chưa xoá
+ * @param {string | null} skipDeckId deck đang sửa (bỏ qua chính nó)
+ * @returns {{ term: string, deck: string, deckId: string }[]} `deck` là tên deck đã có từ đó
+ */
+export function findDupTerms(cards, decks, skipDeckId) {
+  const owner = new Map();
+  for (const d of decks || []) {
+    if (d.id === skipDeckId) continue;
+    for (const c of d.cards || []) {
+      const k = norm(c.term);
+      if (k && !owner.has(k)) owner.set(k, d);
+    }
+  }
+  const out = [];
+  const seen = new Set();
+  for (const c of cards || []) {
+    const k = norm(c.term);
+    if (k && owner.has(k) && !seen.has(k)) {
+      seen.add(k);
+      out.push({ term: c.term, deck: owner.get(k).name, deckId: owner.get(k).id });
+    }
+  }
+  return out;
+}
+
+/**
+ * Bỏ khỏi danh sách đang soạn mọi thẻ có từ nằm trong `dups` (kết quả `findDupTerms`). Không sửa đầu vào.
+ * @param {{ term: string }[]} cards
+ * @param {{ term: string }[]} dups
+ */
+export function dropDupTerms(cards, dups) {
+  const bad = new Set(dups.map((d) => norm(d.term)));
+  return cards.filter((c) => !bad.has(norm(c.term)));
 }

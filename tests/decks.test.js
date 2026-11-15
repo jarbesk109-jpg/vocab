@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DAY1_RENAME_FROM, applySessionResult, day1Name, renameDay1OnImport, renameOnDay1 } from '../logic/index.js';
+import { DAY1_RENAME_FROM, applySessionResult, day1Name, dropDupTerms, findDupTerms, parseCards, renameDay1OnImport, renameOnDay1 } from '../logic/index.js';
 import { mkCard, mkDeck, mkReviewDeck, mkStudiedDeck } from './fixtures/small.js';
 
 const T = '2026-11-14';
@@ -177,5 +177,88 @@ describe('renameDay1OnImport: đổi tên deck xong Ngày 1 trên v1 từ 15/11 
   it('mốc ngày truyền vào được; startedAt hỏng thì bỏ qua', () => {
     expect(names(renameDay1OnImport([started('x', '2026-11-14')], '2026-11-14'))).toEqual(['1411']);
     expect(names(renameDay1OnImport([mkDeck('x', { startedAt: 'abc' }), mkDeck('y', { startedAt: null })]))).toEqual(['x', 'y']);
+  });
+});
+
+describe('parseCards: dán danh sách "từ: nghĩa" (task 2.13a)', () => {
+  it('mỗi dòng một thẻ, cắt khoảng trắng hai đầu', () => {
+    expect(parseCards('reduce: giảm\n  government :  chính phủ  ')).toEqual({
+      cards: [
+        { term: 'reduce', def: 'giảm' },
+        { term: 'government', def: 'chính phủ' },
+      ],
+      bad: 0,
+      badLines: [],
+    });
+  });
+  it('tách ở dấu : ĐẦU TIÊN (nghĩa có thể chứa dấu :)', () => {
+    expect(parseCards('ratio: tỉ lệ (vd 3:1): xem thêm').cards).toEqual([{ term: 'ratio', def: 'tỉ lệ (vd 3:1): xem thêm' }]);
+  });
+  it('bỏ dòng trống và dòng chỉ có khoảng trắng; nhận cả xuống dòng kiểu Windows', () => {
+    const r = parseCards('\r\na: 1\r\n\r\n   \r\nb: 2\r\n');
+    expect(r.cards).toEqual([{ term: 'a', def: '1' }, { term: 'b', def: '2' }]);
+    expect(r.bad).toBe(0);
+  });
+  it('đếm dòng lỗi: không có dấu :, thiếu từ, thiếu nghĩa; dòng tốt vẫn được nhận', () => {
+    const r = parseCards('không có dấu hai chấm\n: thiếu từ\nthiếu nghĩa:\nok: được\n :  ');
+    expect(r.cards).toEqual([{ term: 'ok', def: 'được' }]);
+    expect(r.bad).toBe(4);
+    expect(r.badLines).toEqual(['không có dấu hai chấm', ': thiếu từ', 'thiếu nghĩa:', ':']);
+  });
+  it('giữ nguyên chữ hoa thường, dấu / và dấu phẩy trong từ và nghĩa; giữ thứ tự dòng; không tự bỏ dòng trùng', () => {
+    const r = parseCards('Lead to / result in: dẫn đến\neven: thậm chí, ngay cả\neven: thậm chí');
+    expect(r.cards).toEqual([
+      { term: 'Lead to / result in', def: 'dẫn đến' },
+      { term: 'even', def: 'thậm chí, ngay cả' },
+      { term: 'even', def: 'thậm chí' },
+    ]);
+  });
+  it('rỗng, null, undefined → không có thẻ, không sập', () => {
+    for (const t of ['', '   \n  ', null, undefined]) expect(parseCards(t)).toEqual({ cards: [], bad: 0, badLines: [] });
+  });
+});
+
+describe('findDupTerms: từ đã có ở deck khác (task 2.13a, chuyển từ v1)', () => {
+  const deck = (name, terms, over = {}) => mkDeck(name, { cards: terms.map((t, i) => mkCard(name + i, { term: t })), ...over });
+  const decks = () => [deck('1608', ['reduce', 'The Government', 'lead to / result in']), deck('1708', ['apple', 'reduce'])];
+  const cardsOfTerms = (...terms) => terms.map((term, i) => ({ id: 'n' + i, term, def: 'x' }));
+
+  it('so theo norm: hoa thường, khoảng trắng, dấu câu cuối, to/a/an/the đứng đầu', () => {
+    const dups = findDupTerms(cardsOfTerms('To Reduce.', 'government', 'banana', '  APPLE '), decks(), null);
+    expect(dups).toEqual([
+      { term: 'To Reduce.', deck: '1608', deckId: 'id-1608' },
+      { term: 'government', deck: '1608', deckId: 'id-1608' },
+      { term: '  APPLE ', deck: '1708', deckId: 'id-1708' },
+    ]);
+  });
+  it('từ có ở nhiều deck: báo deck đứng trước; một từ lặp trong danh sách đang soạn chỉ báo một lần', () => {
+    const dups = findDupTerms(cardsOfTerms('reduce', 'Reduce', 'reduce!'), decks(), null);
+    expect(dups).toEqual([{ term: 'reduce', deck: '1608', deckId: 'id-1608' }]);
+  });
+  it('bỏ qua chính deck đang sửa', () => {
+    const all = decks();
+    const own = all[0].cards.map((c) => ({ ...c }));
+    expect(findDupTerms(own, all, 'id-1608')).toEqual([{ term: 'reduce', deck: '1708', deckId: 'id-1708' }]);
+    expect(findDupTerms(own, all, null).length).toBe(3); // không nói đang sửa deck nào thì tính cả nó
+  });
+  it('so NGUYÊN chuỗi từ (như v1): "lead to" không trùng với "lead to / result in"', () => {
+    expect(findDupTerms(cardsOfTerms('lead to', 'result in'), decks(), null)).toEqual([]);
+    expect(findDupTerms(cardsOfTerms('Lead to / Result in'), decks(), null).length).toBe(1);
+  });
+  it('từ rỗng không bao giờ trùng; không trùng thì trả về mảng rỗng; không sửa đầu vào', () => {
+    const all = [...decks(), deck('rỗng', ['', '  '])];
+    const before = structuredClone(all);
+    const cards = cardsOfTerms('', '  ', 'mới');
+    expect(findDupTerms(cards, all, null)).toEqual([]);
+    expect(all).toEqual(before);
+    expect(findDupTerms([], all, null)).toEqual([]);
+    expect(findDupTerms(null, all, null)).toEqual([]);
+  });
+  it('dropDupTerms: bỏ các thẻ trùng ra khỏi danh sách đang soạn (nút "bỏ từ trùng"), giữ thứ tự thẻ còn lại', () => {
+    const cards = cardsOfTerms('To Reduce.', 'banana', 'reduce', 'cherry', 'APPLE');
+    const dups = findDupTerms(cards, decks(), null);
+    expect(dropDupTerms(cards, dups).map((c) => c.term)).toEqual(['banana', 'cherry']);
+    expect(dropDupTerms(cards, [])).toEqual(cards);
+    expect(cards.length).toBe(5);
   });
 });

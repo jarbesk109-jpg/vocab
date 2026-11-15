@@ -593,7 +593,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Test viết trước: số tăng 2 → 3 thì `fire`; 1 → 2 chưa `fire`; chạm 10, 50, 100, 200 thì `milestone`, 20 hay 150 thì không; số không tăng thì mọi cờ `false`; `freezeEarned` khi số băng tăng.
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.13a Soạn deck: logic** — [TDD] — cỡ 30 phút
+- [x] **2.13a Soạn deck: logic** — [TDD] — cỡ 30 phút
   - File: `logic/decks.js` (`parseCards`, `findDupTerms`; `day1Name`, `renameOnDay1` đã có), `tests/decks.test.js`.
   - Test viết trước: `từ: nghĩa` mỗi dòng một thẻ, tách ở dấu `:` đầu tiên, bỏ dòng trống, đếm dòng lỗi; `findDupTerms` so theo `norm`, bỏ qua chính deck đang sửa.
   - Xong khi: `npm test` xanh.
@@ -876,6 +876,13 @@ Thử thêm ngoài checklist:
 **Task 2.14a (15/11)**
 - `streakEvents(before, after)`: giao diện gọi `computeStreak` trước và sau mỗi lệnh rồi đưa hai kết quả vào. `before` là `null` (lần đầu mở app) thì không có hiệu ứng. Số giảm hoặc đứng yên: mọi cờ `false`.
 - `freezeEarned` = số băng sau lớn hơn trước. Trường hợp hiếm không báo: dùng băng đúng ngày chạm bội số 21 (mất 1, nhận 1, số băng không đổi).
+
+**Task 2.13a (15/11)**
+- `parseCards(text)` → `{ cards: [{ term, def }], bad, badLines }`. Thẻ chưa có `id`: màn soạn deck (2.13b) tự gắn id rồi phát lệnh `deckUpsert`. Chỉ nhận dấu `:` (v1 còn cho chọn dấu tách khác; v2 theo đặc tả chỉ có `từ: nghĩa`). Không tự bỏ dòng trùng trong chính danh sách dán.
+- `findDupTerms(cards, decks, skipDeckId)` → `[{ term, deck, deckId }]`, chuyển từ v1: so NGUYÊN chuỗi từ theo `norm` (`lead to` không trùng `lead to / result in`), mỗi từ báo một lần, deck đứng trước được báo. `decks` truyền `state.decks` (deck đã xoá không tính).
+- Thêm `dropDupTerms(cards, dups)` cho nút "bỏ từ trùng".
+
+**Hết Đợt A (15/11).** Mọi logic của v2 đã có trong `logic/` kèm test (`npm test`: 366 test). Task kế tiếp theo thứ tự là 2.1 (khung v2), đầu Đợt B.
 
 ---
 
