@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addDays, computeStreak, creditSession, dayUnits, recordAnswer, useFreeze } from '../logic/index.js';
+import { addDays, computeStreak, creditSession, dayUnits, recordAnswer, streakEvents, useFreeze } from '../logic/index.js';
 
 const START = '2026-01-01';
 /** Một ngày kiểu mới có `k` lượt (k deck đã tính lượt, mỗi deck 5 câu), không còn gì khác để làm. */
@@ -253,5 +253,64 @@ describe('computeStreak (mục 3.4)', () => {
   it('thiếu freezeUsedDays (dữ liệu cũ) vẫn chạy', () => {
     const { activity, last } = build(run(2));
     expect(computeStreak(activity, undefined, last).count).toBe(2);
+  });
+});
+
+describe('streakEvents (mục 3.4, task 2.14a): hiệu ứng khi số streak đổi', () => {
+  const st = (count, freezes = 0) => ({ count, best: count, freezes, status: 'safe', needUnits: 0 });
+  const NONE = { increased: false, fire: false, milestone: false, freezeEarned: false };
+
+  it('số tăng 2 → 3: lửa bùng; 1 → 2 và 0 → 1: tăng nhưng chưa có lửa', () => {
+    expect(streakEvents(st(2), st(3))).toEqual({ increased: true, fire: true, milestone: false, freezeEarned: false });
+    expect(streakEvents(st(1), st(2))).toEqual({ increased: true, fire: false, milestone: false, freezeEarned: false });
+    expect(streakEvents(st(0), st(1))).toEqual({ increased: true, fire: false, milestone: false, freezeEarned: false });
+  });
+  it('mỗi lần lên số từ 3 trở đi đều có lửa', () => {
+    for (const n of [3, 4, 9, 20, 77, 365]) expect(streakEvents(st(n - 1), st(n)).fire).toBe(true);
+  });
+  it('mốc lớn: 10, 50, 100, 200, 300, 400…', () => {
+    for (const n of [10, 50, 100, 200, 300, 400, 1000]) {
+      expect(streakEvents(st(n - 1), st(n))).toMatchObject({ increased: true, fire: true, milestone: true });
+    }
+  });
+  it('không phải mốc lớn: 20, 30, 40, 60, 99, 101, 150, 250', () => {
+    for (const n of [20, 30, 40, 60, 99, 101, 150, 250]) expect(streakEvents(st(n - 1), st(n)).milestone).toBe(false);
+  });
+  it('số không tăng (học thêm trong ngày đã tính, hoặc chưa đủ lượt): mọi cờ false, kể cả đang đứng ở mốc', () => {
+    expect(streakEvents(st(10), st(10))).toEqual(NONE);
+    expect(streakEvents(st(3), st(3))).toEqual(NONE);
+    expect(streakEvents(st(0), st(0))).toEqual(NONE);
+  });
+  it('số giảm (chuỗi gãy, bắt đầu lại): mọi cờ false', () => {
+    expect(streakEvents(st(50), st(1))).toEqual(NONE);
+    expect(streakEvents(st(12), st(10))).toEqual(NONE);
+    expect(streakEvents(st(7), st(0))).toEqual(NONE);
+  });
+  it('freezeEarned khi số băng tăng (chạm 21); đã có băng sẵn thì chạm 42 không báo; dùng băng không báo', () => {
+    expect(streakEvents(st(20, 0), st(21, 1))).toEqual({ increased: true, fire: true, milestone: false, freezeEarned: true });
+    expect(streakEvents(st(41, 1), st(42, 1)).freezeEarned).toBe(false);
+    expect(streakEvents(st(30, 1), st(31, 0)).freezeEarned).toBe(false);
+  });
+  it('chưa có trạng thái trước (lần đầu mở app): không hiệu ứng gì', () => {
+    expect(streakEvents(null, st(10))).toEqual(NONE);
+    expect(streakEvents(undefined, st(3))).toEqual(NONE);
+  });
+  it('đi cùng computeStreak: xong lượt đầu của ngày thứ 3 → lửa; ngày thứ 21 → lửa + nhận băng', () => {
+    const days = (n) => Object.fromEntries(Array.from({ length: n }, (_, i) => [addDays(START, i), U(1)]));
+    const run = (n) => {
+      const today = addDays(START, n - 1);
+      const after = days(n);
+      const before = { ...after };
+      delete before[today];
+      return streakEvents(computeStreak(before, [], today), computeStreak(after, [], today));
+    };
+    expect(run(3)).toEqual({ increased: true, fire: true, milestone: false, freezeEarned: false });
+    expect(run(10)).toMatchObject({ fire: true, milestone: true });
+    expect(run(21)).toMatchObject({ fire: true, milestone: false, freezeEarned: true });
+    // làm thêm lượt thứ hai trong ngày: không báo lại
+    const today = addDays(START, 2);
+    const one = days(3);
+    const two = { ...one, [today]: U(2) };
+    expect(streakEvents(computeStreak(one, [], today), computeStreak(two, [], today))).toEqual(NONE);
   });
 });

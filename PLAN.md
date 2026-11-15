@@ -588,7 +588,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Test viết trước: mục 3.7; với file thật: `1608` thuộc cả hai chiều 100%, `stagesPassed` đã qua Mới, +1, +3, +7; `2208` 0% và chưa qua mốc nào.
   - Xong khi: `npm test` xanh.
 
-- [ ] **2.14a Streak: sự kiện** — [TDD] — cỡ 30 phút
+- [x] **2.14a Streak: sự kiện** — [TDD] — cỡ 30 phút
   - File: `logic/streak.js` (`streakEvents`, mục 3.4), `tests/streak.test.js`.
   - Test viết trước: số tăng 2 → 3 thì `fire`; 1 → 2 chưa `fire`; chạm 10, 50, 100, 200 thì `milestone`, 20 hay 150 thì không; số không tăng thì mọi cờ `false`; `freezeEarned` khi số băng tăng.
   - Xong khi: `npm test` xanh.
@@ -872,6 +872,10 @@ Thử thêm ngoài checklist:
 - Ngày qua mốc Mới: lấy `startedAt` nếu có (xong Ngày 1 bằng Học thì không có bài Kiểm tra nào), không thì bài Kiểm tra `stage 0` đạt KPI. Deck lùi mốc rồi qua lại: lấy lần qua cuối.
 - Phiên Viết ghi `history` nằm trong lệnh `sessionDone` của `logic/store.js` (không đụng `applySessionResult`): mỗi phiên Viết làm HẾT một lượt là một dòng `{ date, pct (làm tròn), mode: 'write' }`, kể cả khi deck không đổi mốc.
 - **Hệ quả cần biết:** `startedDay` (mục 3.2) lấy ngày sớm nhất trong `history`. Deck mới mà làm hết một lượt Viết nhưng CHƯA xong Ngày 1 (còn thẻ sai) thì từ nay có `history`, nên được tính là "đã bắt đầu deck mới hôm đó" khi xét trần 3 ngày. Trước đây trường hợp này không tính. Người thực thi thấy hợp lý (đúng là vừa bắt đầu một deck mới) nên không sửa mục 3.2; Khang không đồng ý thì báo.
+
+**Task 2.14a (15/11)**
+- `streakEvents(before, after)`: giao diện gọi `computeStreak` trước và sau mỗi lệnh rồi đưa hai kết quả vào. `before` là `null` (lần đầu mở app) thì không có hiệu ứng. Số giảm hoặc đứng yên: mọi cờ `false`.
+- `freezeEarned` = số băng sau lớn hơn trước. Trường hợp hiếm không báo: dùng băng đúng ngày chạm bội số 21 (mất 1, nhận 1, số băng không đổi).
 
 ---
 

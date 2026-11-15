@@ -144,3 +144,26 @@ export function computeStreak(activity, freezeUsedDays, today) {
   }
   return { count, best, freezes, status, needUnits };
 }
+
+/**
+ * Hiệu ứng cần chạy khi streak đổi từ `before` sang `after` (hai kết quả `computeStreak`
+ * của cùng một ngày, trước và sau một lệnh). Luật 7 mục 3.4.
+ * - `increased`: số streak vừa tăng.
+ * - `fire`: lửa bùng (mỗi lần lên số, từ streak 3).
+ * - `milestone`: màn chúc mừng lớn ở mốc 10, 50, 100, 200, 300, 400…
+ * - `freezeEarned`: vừa nhận thêm một băng giữ lửa.
+ * Chưa có `before` (lần đầu mở app) thì không có hiệu ứng nào.
+ * @param {{ count: number, freezes: number } | null | undefined} before
+ * @param {{ count: number, freezes: number }} after
+ * @returns {{ increased: boolean, fire: boolean, milestone: boolean, freezeEarned: boolean }}
+ */
+export function streakEvents(before, after) {
+  const increased = !!before && after.count > before.count;
+  const n = after.count;
+  return {
+    increased,
+    fire: increased && n >= 3,
+    milestone: increased && (n === 10 || n === 50 || n % 100 === 0),
+    freezeEarned: increased && after.freezes > before.freezes,
+  };
+}
