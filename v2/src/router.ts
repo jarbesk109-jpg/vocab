@@ -1,14 +1,20 @@
 import { useSyncExternalStore } from 'react';
 
 /** Các màn của app. Định tuyến bằng hash để chạy được trên GitHub Pages và nút Back đi đúng màn. */
-export type Route = 'today' | 'decks' | 'settings' | 'import';
+export type Route = 'today' | 'decks' | 'settings' | 'import' | 'study';
 
 const PATHS: Record<Route, string> = {
   today: '#/',
   decks: '#/decks',
   settings: '#/settings',
   import: '#/import',
+  study: '#/study',
 };
+
+/** Đường dẫn vào màn học của một deck: `#/study/<id>`. */
+export function studyHref(deckId: string): string {
+  return `${PATHS.study}/${encodeURIComponent(deckId)}`;
+}
 
 /** Đường dẫn (hash) của một màn, dùng cho thuộc tính href. */
 export function hrefOf(route: Route): string {
@@ -21,6 +27,7 @@ function parse(hash: string): Route | null {
   if (path === 'decks') return 'decks';
   if (path === 'settings') return 'settings';
   if (path === 'import') return 'import';
+  if (/^study\/[^/]+$/.test(path)) return 'study';
   return null;
 }
 
@@ -39,4 +46,19 @@ function snapshot(): Route {
 
 export function useRoute(): Route {
   return useSyncExternalStore(subscribe, snapshot);
+}
+
+function paramSnapshot(): string {
+  const m = window.location.hash.match(/^#\/?study\/([^/]+)\/?$/);
+  if (!m) return '';
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return '';
+  }
+}
+
+/** Id deck trong `#/study/<id>` (chuỗi rỗng ở các màn khác). */
+export function useStudyDeckId(): string {
+  return useSyncExternalStore(subscribe, paramSnapshot);
 }

@@ -626,7 +626,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Tiêu chí tay: nhập file thật → 8 deck, 175 thẻ, 713 lượt; tải lại trang và mở trên điện thoại thấy cùng dữ liệu; tắt mạng (DevTools offline) rồi phát một thay đổi → thấy trạng thái "đang chờ gửi", bật mạng → tự gửi.
   - Xong khi: tiêu chí đạt.
 
-- [ ] **2.9 Màn Hôm nay** — [UI] — cỡ 1,5 giờ
+- [x] **2.9 Màn Hôm nay** — [UI] — cỡ 1,5 giờ
   - File: `v2/src/screens/Today.tsx` + CSS.
   - Hành vi: đầu màn là số streak + trạng thái; MỘT nút chính "Bắt đầu" cho deck đáng làm nhất (kèm số câu); bên dưới các deck còn lại của hôm nay (tối đa 4 tính cả deck chính), deck đã xong có dấu ✓; dòng cổng deck mới; dòng nhịp học; hai mục gập "Đang chờ thêm" và "Kho deck mới"; banner "Học tiếp" khi có phiên dang dở.
   - Tiêu chí tay: khớp `planToday`; xong một deck thì danh sách cập nhật không giật; dùng tốt ở 360px.
@@ -959,6 +959,26 @@ Thử thêm ngoài checklist:
   5. Supabase Dashboard → Table Editor: `meta` 1 dòng, `decks` đủ số deck.
   6. Điện thoại chỉ thử được sau khi push (cần Khang cho phép push `main`, sẽ deploy v2 có màn đăng nhập lên `/vocab/v2/`; v1 ở `/vocab/` không đổi).
 - **Khang xác nhận (15/11):** đã thử bằng tài khoản thật ở máy: chuyển đủ 8 deck, 175 thẻ; F5 và đăng nhập lại vẫn giữ nguyên. Duyệt 3 thứ thêm sớm (ô KPI, thẻ Dữ liệu, danh sách Học phần). Bảo tick 2.3 và 2.6, push `main`. Khang không nhắc tới bước 1 (ghi bằng khoá công khai bị từ chối) và bước 4 (mất mạng → chờ gửi) nên hai bước đó coi như chưa có kết quả với Supabase thật.
+
+**Task 2.3 + 2.6: đã push và kiểm trang thật (15/11)**
+- `git push origin main` (`6143c6a..670d153`, không force). Workflow deploy xong: `/vocab/v2/` phục vụ đúng bản build ở máy (có màn đăng nhập và chuyển dữ liệu).
+- v1 không đổi: `index.html`, `app.js`, `logic/index.js`, `logic/schedule.js`, `logic/streak.js` trên trang thật khớp từng byte với tag `v1-live-1`; `/vocab/logic/store.js` và `/vocab/PLAN.md` vẫn 404.
+- Chưa kiểm được (cần đăng nhập thật): đăng nhập trên trang thật và trên điện thoại thấy cùng dữ liệu. Khang xem giúp.
+
+**Task 2.9 (15/11): màn Hôm nay**
+- File: `v2/src/screens/Today.tsx`; sửa `v2/src/App.tsx`, `v2/src/router.ts`, `v2/src/styles/base.css`.
+- Bố cục từ trên xuống: thẻ streak (ngọn lửa cam chỉ sáng khi hôm nay đã tính; số ngày; dòng trạng thái; "N băng" khi có) → banner "Học tiếp" (nếu có phiên dở) → thẻ việc đầu tiên với MỘT nút "Bắt đầu" → các deck còn lại của hôm nay + deck đã xong (✓ xong hôm nay) → dòng cổng deck mới + dòng nhịp học → hai mục gập "Đang chờ thêm (n)", "Kho deck mới (n)", mỗi dòng có "Học thêm".
+- Deck chính = deck đầu của `reviews`, không có thì `fresh`. Số câu: deck ôn "Kiểm tra · 2n câu"; deck mới "Học · n thẻ"; deck mới học dở "Học · còn x/n thẻ" (x = số thẻ chưa đúng lần nào hôm nay).
+- Chữ nhãn, dòng cổng, dòng nhịp lấy đúng của v1 đã vá (`HỌC MỚI`, `HỌC TIẾP`, `ÔN +N`, `· trễ Nd`, "Deck mới tạm dừng: còn N deck trễ"…).
+- Người thực thi tự quyết (Khang xem lại):
+  - Thêm đường dẫn `#/study/<id deck>`: mọi nút "Bắt đầu" / "Học thêm" / "Học tiếp" dẫn tới đó. Hiện là màn tạm ("Màn Học đang được làm"); task 2.10 và 2.11 thay bằng màn thật.
+  - Banner "Học tiếp" đọc `localStorage` `recall.session.v1` dạng `{ deckId, mode, state }`. Chưa có gì ghi vào khoá này: màn Học (2.10) sẽ ghi. Phiên trỏ tới deck không còn thì không hiện banner.
+  - Streak đang nguy: thẻ streak đổi nền đỏ nhạt và ghi "Streak đang nguy: hôm qua lỡ. Hôm nay còn thiếu N lượt (thiếu deck thì 20 câu thay 1 lượt)."; đã bấm băng thì "Đã dùng băng: cần N lượt hôm nay.". Nút **Dùng băng** CHƯA có (thuộc 2.14b).
+  - Hết deck của hôm nay: thay thẻ nút chính bằng "Hôm nay xong rồi"; không có deck đến hạn và chưa làm gì: "Hôm nay không có deck đến hạn… Làm 20 câu bất kỳ để giữ streak".
+  - `upcoming` (deck đã hẹn ngày ôn) không hiện ở Hôm nay: task không liệt kê; lần ôn kế nằm ở màn Học phần (2.12b).
+- **Quan sát, chưa đổi luật:** deck mới HỌC DỞ (có câu trả lời nhưng chưa xong Ngày 1, chưa có `history`) không có `startedDay`, nên không tính là "đã bắt đầu deck mới" khi xét trần 3 ngày. Hệ quả thấy trên màn hình: `2208` học dở 7 thẻ hôm nay thì Hôm nay vừa có `2208` (HỌC TIẾP) vừa mời thêm deck mới `3108` (lý do `ceiling`). Đúng theo chữ của mục 3.2; nếu Khang muốn deck học dở chặn việc mời deck mới khác thì cần sửa mục 3.2.
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, ngày học 15/11, 80/80 mục đạt. Mỗi tình huống so thẳng màn hình với `planToday` / `computeStreak` / `paceInfo` tính ngoài trình duyệt: file thật (`2108`, `1708`, `2008` + mới `2208`; chờ thêm `1608`; kho `3108`, `0209`, `1109`; cổng `ceiling`); xong 1 deck ôn + học dở deck mới; xong Ngày 1 deck mới (tên đổi thành `1511`, cổng `doneNew`); xong hết; streak đang nguy có băng, đã dùng băng; nhịp học có số; banner Học tiếp; tài khoản 0 deck. Bề rộng 320, 360, 480, 719, 720, 1100, 1600px: không tràn ngang, vùng bấm ≥ 44px, chữ không bị cắt. Bấm "Bắt đầu" tới đúng deck, Back về Hôm nay. Console không lỗi.
+- Chưa thử được: "xong một deck thì danh sách cập nhật không giật" (chưa có màn Học để làm xong một deck ngay trên trang; mới thử bằng cách đổi dữ liệu rồi mở lại), điện thoại thật. Thử lại khi xong 2.10 / 2.11.
 
 ---
 

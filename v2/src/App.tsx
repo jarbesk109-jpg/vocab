@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { studyDay, summarize, toV1 } from '../../logic/index.js';
 import { authErrorText, useSession } from './auth';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
-import { hrefOf, useRoute, type Route } from './router';
+import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
 import { Import } from './screens/Import';
 import { Login } from './screens/Login';
+import { Today } from './screens/Today';
 import { supabase } from './supabase';
 import { useTheme, type ThemeChoice } from './theme';
 
@@ -47,6 +48,7 @@ const TITLES: Record<Route, string> = {
   decks: 'Học phần',
   settings: 'Cài đặt',
   import: 'Chuyển dữ liệu',
+  study: 'Học',
 };
 
 /** '2026-11-15' → 'Chủ nhật, 15/11' (ngày học: ngày mới bắt đầu lúc 4h sáng). */
@@ -258,6 +260,7 @@ export function App() {
 
 function Shell({ userId, email }: { userId: string; email: string }) {
   const hashRoute = useRoute();
+  const studyDeckId = useStudyDeckId();
   const { store, state, status, online, boot, send, retry } = useStore(userId);
   // Tài khoản chưa có dữ liệu: mọi màn (trừ Cài đặt, để còn đăng xuất) đều là màn chuyển dữ liệu.
   const route: Route = boot === 'ready' && status.empty && hashRoute !== 'settings' ? 'import' : hashRoute;
@@ -313,9 +316,7 @@ function Shell({ userId, email }: { userId: string; email: string }) {
         <div className="main-inner">
           {route === 'today' && (
             <Screen route="today" sub={formatStudyDay(studyDay(Date.now()))}>
-              <Empty title="Màn Hôm nay đang được làm">
-                Dữ liệu đã ở trong tài khoản ({state.decks.length} học phần). Danh sách hôm nay sẽ hiện ở đây.
-              </Empty>
+              <Today state={state} today={studyDay(Date.now())} />
             </Screen>
           )}
           {route === 'decks' && (
@@ -326,6 +327,13 @@ function Shell({ userId, email }: { userId: string; email: string }) {
           {route === 'settings' && (
             <Screen route="settings">
               <Settings email={email} state={state} status={status} online={online} send={send} />
+            </Screen>
+          )}
+          {route === 'study' && (
+            <Screen route="study" sub={state.decks.find((x: any) => x.id === studyDeckId)?.name}>
+              <Empty title="Màn Học đang được làm">
+                Học, Viết và Kiểm tra sẽ mở ở đây. <a href={hrefOf('today')}>Về Hôm nay</a>
+              </Empty>
             </Screen>
           )}
           {route === 'import' && (
