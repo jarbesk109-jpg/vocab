@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { studyDay } from '../../logic/index.js';
+import { studyDay, summarize, toV1 } from '../../logic/index.js';
 import { authErrorText, useSession } from './auth';
+import { useStore, type StoreState, type StoreStatus } from './data/useStore';
 import { hrefOf, useRoute, type Route } from './router';
+import { Import } from './screens/Import';
 import { Login } from './screens/Login';
 import { supabase } from './supabase';
 import { useTheme, type ThemeChoice } from './theme';
@@ -44,6 +46,7 @@ const TITLES: Record<Route, string> = {
   today: 'Hôm nay',
   decks: 'Học phần',
   settings: 'Cài đặt',
+  import: 'Chuyển dữ liệu',
 };
 
 /** '2026-11-15' → 'Chủ nhật, 15/11' (ngày học: ngày mới bắt đầu lúc 4h sáng). */
@@ -115,10 +118,114 @@ function Account({ email }: { email: string }) {
   );
 }
 
-function Settings({ email }: { email: string }) {
+/** Trạng thái gửi dữ liệu, bằng chữ. `null` = mọi thứ đã lưu trên máy chủ. */
+function syncText(status: StoreStatus, online: boolean): { text: string; bad: boolean } | null {
+  if (status.error === 'conflict') return { text: 'Chưa gửi được: dữ liệu trên máy chủ đang đổi liên tục. Tải lại trang.', bad: true };
+  if (status.pending === 0) return null;
+  if (!online) return { text: `Mất mạng · ${status.pending} thay đổi đang chờ gửi`, bad: false };
+  if (status.error === 'network') return { text: `Chưa gửi được · ${status.pending} thay đổi đang chờ gửi`, bad: false };
+  return { text: 'Đang gửi…', bad: false };
+}
+
+/** Nhãn nổi ở góc màn: chỉ hiện khi còn thay đổi chưa lên máy chủ. Không chiếm chỗ nên không xê dịch bố cục. */
+function SyncPill({ status, online }: { status: StoreStatus; online: boolean }) {
+  const s = syncText(status, online);
+  return (
+    <div className="sync-pill" role="status" aria-live="polite" data-show={s ? '' : undefined} data-bad={s?.bad ? '' : undefined}>
+      {s?.text}
+    </div>
+  );
+}
+
+/** '2026-10-10' → '10/10/2026'. */
+function formatDay(day: string): string {
+  const [y, m, d] = day.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+/** Danh sách học phần tối giản (tiến độ từng học phần làm ở task 2.12b). */
+function DeckList({ state }: { state: StoreState }) {
+  if (!state.decks.length) return <Empty title="Chưa có học phần nào">Các học phần và tiến độ của từng học phần sẽ hiện ở đây.</Empty>;
+  return (
+    <ul className="card deck-list">
+      {state.decks.map((d: any) => (
+        <li key={d.id}>
+          <span className="deck-name">{d.name}</span>
+          <span className="muted">{(d.cards || []).length} thẻ</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Kpi({ value, onChange }: { value: number; onChange: (kpi: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  // Giá trị đổi từ máy khác (hoặc sau khi gửi) thì ô nhập theo.
+  useEffect(() => setDraft(String(value)), [value]);
+
+  function commit() {
+    const n = Math.round(Number(draft));
+    if (!draft.trim() || !Number.isFinite(n)) return setDraft(String(value));
+    const kpi = Math.min(100, Math.max(50, n));
+    setDraft(String(kpi));
+    if (kpi !== value) onChange(kpi);
+  }
+
+  return (
+    <label className="field kpi">
+      <span className="field-label">KPI bài Kiểm tra (%)</span>
+      <input
+        className="input"
+        type="number"
+        inputMode="numeric"
+        min={50}
+        max={100}
+        step={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+      />
+      <span className="muted">Bài Kiểm tra đạt từ mức này trở lên thì học phần lên mốc.</span>
+    </label>
+  );
+}
+
+type SettingsProps = {
+  email: string;
+  state: StoreState;
+  status: StoreStatus;
+  online: boolean;
+  send: (cmd: Record<string, unknown>) => unknown;
+};
+
+function Settings({ email, state, status, online, send }: SettingsProps) {
   const [theme, setTheme] = useTheme();
+  const sum = summarize(toV1(state.meta, state.decks));
+  const sync = syncText(status, online);
   return (
     <>
+    {!status.empty && (
+      <div className="card data-card">
+        <Kpi value={state.meta.settings?.kpi ?? 90} onChange={(kpi) => send({ type: 'settings', patch: { kpi } })} />
+      </div>
+    )}
+    <div className="card data-card">
+      <div className="field">
+        <span className="field-label">Dữ liệu</span>
+        <span className="muted">
+          {status.empty
+            ? 'Tài khoản chưa có dữ liệu.'
+            : `${sum.sets} học phần · ${sum.cards} thẻ · ${sum.answers} lượt trả lời · ${sum.last ? 'học gần nhất ' + formatDay(sum.last) : 'chưa học lần nào'}`}
+        </span>
+        <span className={sync?.bad ? 'sync-line bad' : 'sync-line'}>{sync ? sync.text : 'Đã lưu trên máy chủ.'}</span>
+      </div>
+      <a className="btn" href={hrefOf('import')}>
+        Chuyển dữ liệu từ bản cũ
+      </a>
+    </div>
     <div className="card">
       <fieldset className="field">
         <legend className="field-label">Giao diện</legend>
@@ -145,11 +252,15 @@ export function App() {
 
   if (session === undefined) return <div className="boot" aria-busy="true" />; // đang đọc phiên đã lưu: chưa vẽ gì để khỏi nháy
   if (session === null) return <Login />;
-  return <Shell email={session.user.email ?? ''} />;
+  // key: đổi tài khoản thì dựng lại toàn bộ (kho dữ liệu là của từng tài khoản)
+  return <Shell key={session.user.id} userId={session.user.id} email={session.user.email ?? ''} />;
 }
 
-function Shell({ email }: { email: string }) {
-  const route = useRoute();
+function Shell({ userId, email }: { userId: string; email: string }) {
+  const hashRoute = useRoute();
+  const { store, state, status, online, boot, send, retry } = useStore(userId);
+  // Tài khoản chưa có dữ liệu: mọi màn (trừ Cài đặt, để còn đăng xuất) đều là màn chuyển dữ liệu.
+  const route: Route = boot === 'ready' && status.empty && hashRoute !== 'settings' ? 'import' : hashRoute;
   const shown = useRef(route);
 
   // Chuyển màn: đổi tiêu đề tab, đưa focus về tiêu đề màn và cuộn lên đầu (không làm khi vừa mở app).
@@ -162,6 +273,21 @@ function Shell({ email }: { email: string }) {
     window.scrollTo(0, 0);
   }, [route]);
 
+  if (boot === 'loading') return <div className="boot" aria-busy="true" />;
+  if (boot === 'error') {
+    return (
+      <main className="login">
+        <div className="login-card card">
+          <h1 className="screen-title">Chưa tải được dữ liệu</h1>
+          <p className="muted">Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.</p>
+          <button className="btn btn-primary" type="button" onClick={retry}>
+            Thử lại
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <div className="app">
       <nav className="nav" aria-label="Điều hướng chính">
@@ -171,7 +297,7 @@ function Shell({ email }: { email: string }) {
         <ul className="nav-list">
           {NAV.map((item) => (
             <li key={item.route}>
-              <a className="nav-link" href={hrefOf(item.route)} aria-current={route === item.route ? 'page' : undefined}>
+              <a className="nav-link" href={hrefOf(item.route)} aria-current={hashRoute === item.route ? 'page' : undefined}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   {item.icon}
                 </svg>
@@ -182,21 +308,36 @@ function Shell({ email }: { email: string }) {
         </ul>
       </nav>
 
+      <SyncPill status={status} online={online} />
       <main className="main">
         <div className="main-inner">
           {route === 'today' && (
             <Screen route="today" sub={formatStudyDay(studyDay(Date.now()))}>
-              <Empty title="Chưa có gì để học">Danh sách hôm nay sẽ hiện ở đây sau khi chuyển dữ liệu từ bản cũ sang.</Empty>
+              <Empty title="Màn Hôm nay đang được làm">
+                Dữ liệu đã ở trong tài khoản ({state.decks.length} học phần). Danh sách hôm nay sẽ hiện ở đây.
+              </Empty>
             </Screen>
           )}
           {route === 'decks' && (
             <Screen route="decks">
-              <Empty title="Chưa có học phần nào">Các học phần và tiến độ của từng học phần sẽ hiện ở đây.</Empty>
+              <DeckList state={state} />
             </Screen>
           )}
           {route === 'settings' && (
             <Screen route="settings">
-              <Settings email={email} />
+              <Settings email={email} state={state} status={status} online={online} send={send} />
+            </Screen>
+          )}
+          {route === 'import' && (
+            <Screen route="import" sub={status.empty ? undefined : 'Thay dữ liệu trong tài khoản bằng một bản từ bản cũ hoặc từ file.'}>
+              <Import
+                store={store}
+                state={state}
+                hasData={!status.empty}
+                onDone={() => {
+                  window.location.hash = hrefOf('today');
+                }}
+              />
             </Screen>
           )}
         </div>

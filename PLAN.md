@@ -932,6 +932,33 @@ Thử thêm ngoài checklist:
 - Trạng thái Supabase lúc viết (đọc bằng khoá công khai): 3 bảng mới chưa có; **đăng ký mới đang MỞ** (`disable_signup: false`), Khang cần tắt.
 - Việc của Khang trong Dashboard, theo thứ tự: (1) Authentication → Users → Add user (email + mật khẩu, Auto Confirm); (2) tắt cho phép đăng ký mới; (3) SQL Editor: chạy `supabase/schema.sql`; (4) SQL Editor: chạy `supabase/check.sql`, mọi dòng phải `đạt`; (5) báo lại. Sau đó người thực thi kiểm từ ngoài bằng khoá công khai (đọc ra 0 dòng, ghi bị từ chối, đăng ký bị tắt) và Khang đăng nhập thử bằng tài khoản thật.
 
+**Task 2.3: kiểm từ ngoài sau khi Khang làm phần Dashboard (15/11), CHƯA tick**
+- Đọc bằng khoá công khai, không đăng nhập: `disable_signup: true` (đăng ký đã tắt); 3 bảng `decks`, `meta`, `snapshots` đã có và `select` ra 0 dòng. Tức là `schema.sql` đã chạy.
+- CHƯA kiểm được: `insert` / `save_state` bằng khoá công khai bị từ chối (công cụ của phiên làm việc không cho người thực thi gửi lệnh ghi thử tới project thật). Khang kiểm bằng một trong hai cách: `supabase/check.sql` ra toàn `đạt`, hoặc dán vào console của trang v2 khi CHƯA đăng nhập đoạn ở cuối ghi chú 2.6 bên dưới.
+- Còn lại để tick 2.3: Khang đăng nhập bằng tài khoản thật (vào app; tải lại vẫn ở trong; Đăng xuất về màn đăng nhập).
+
+**Task 2.6 (15/11): code đã viết và thử bằng máy chủ GIẢ, CHƯA tick, chờ Khang thử bằng tài khoản thật**
+- Làm 2.6 khi 2.3 chưa tick vì phần còn lại của 2.3 chỉ là việc Khang bấm tay; Khang thử cả hai trong một lần.
+- File: `v2/src/data/supabaseBackend.ts`, `v2/src/data/useStore.ts`, `v2/src/screens/Import.tsx`; sửa `v2/src/App.tsx`, `v2/src/router.ts` (thêm màn `#/import`), `v2/src/styles/base.css`.
+- Luồng mở app: đăng nhập → vẽ ngay từ bản lưu trên máy nếu có, đồng thời tải bản server. Tài khoản chưa có dữ liệu → mọi màn (trừ Cài đặt, để còn đăng xuất) là màn Chuyển dữ liệu. Không tải được mà máy cũng chưa có bản lưu → màn "Chưa tải được dữ liệu" + nút Thử lại, KHÔNG coi là tài khoản trống.
+- Màn Chuyển dữ liệu: nguồn 1 `localStorage` `vocabvip.v1` (tự nhận nếu có), nguồn 2 file JSON. Thứ tự xử lý: `normalize` → `renameDay1OnImport` → hiện tóm tắt + danh sách đổi tên + các chỗ `normalize` đã đắp → bấm mới ghi (`store.replaceAll(toV2(...), 'before-import')`). Tài khoản đã có dữ liệu: hiện tóm tắt bản đang có, cảnh báo `compareFreshness`, và LUÔN phải tick xác nhận mới bấm được "Thay dữ liệu" (kể cả khi không cũ hơn); bản sao `snapshots` được ghi trước. Vào lại màn này từ Cài đặt → "Chuyển dữ liệu từ bản cũ".
+- Người thực thi tự quyết (Khang xem lại):
+  - Thêm sớm vài thứ ngoài danh sách file của task để tiêu chí tay thử được: ô **KPI** trong Cài đặt (thay đổi duy nhất phát được lệnh lúc này, dùng cho bài thử "đang chờ gửi"; thuộc 2.15), thẻ **Dữ liệu** trong Cài đặt (dòng "N học phần · N thẻ · N lượt trả lời · học gần nhất …" + trạng thái gửi), và màn Học phần liệt kê tên deck + số thẻ (2.12b sẽ làm lại).
+  - Trạng thái gửi: nhãn nổi góc trên phải, chỉ hiện khi còn thay đổi chưa lên máy chủ ("Đang gửi…", "Mất mạng · N thay đổi đang chờ gửi", "Chưa gửi được · N thay đổi đang chờ gửi"); không chiếm chỗ nên không xê dịch bố cục.
+  - Khi cửa sổ được focus mà không có gì chờ gửi thì tải lại bản server (không dày hơn 15 giây một lần), để máy đang mở sẵn thấy thay đổi của máy kia mà không cần tải lại trang.
+  - Bản lưu trên máy (`recall.cache.v1`, `recall.outbox.v1`) gắn với một tài khoản (`recall.owner`); tài khoản khác đăng nhập trên cùng máy thì bản lưu và lệnh chờ của người trước bị bỏ, không bao giờ gửi vào tài khoản mới.
+  - `supabaseBackend` không có phiên đăng nhập thì ném lỗi thay vì đọc: nếu cứ đọc, RLS trả 0 dòng và app sẽ tưởng tài khoản trống.
+  - KPI nhận 50–100.
+- Đã thử bằng Chrome headless trên `npm run dev`, 62/62 mục đạt. **Mọi yêu cầu tới Supabase bị chặn và trả lời bằng máy chủ giả trong bộ nhớ (cùng luật `rev` với `save_state`), phiên đăng nhập là phiên giả: chưa có lần nào chạy với Supabase thật.** Đã phủ: tài khoản trống → màn chuyển dữ liệu; file lạ bị từ chối; file thật ra "8 học phần · 175 thẻ · 713 lượt trả lời · học gần nhất 10/10/2026", chưa bấm thì chưa ghi; ghi xong server có 8 deck khớp từng byte với file, 27 `_prevStreak`, `deckOrder` đúng; tải lại và máy không có bản lưu thấy cùng dữ liệu; mất mạng đổi KPI → "1 thay đổi đang chờ gửi", có mạng tự gửi đúng 1 lần; lệnh chờ sống qua tải lại trang; rev lệch → tự tải lại, áp lại, không mất thay đổi của máy kia; nhập bản cũ hơn → cảnh báo, phải tick; bản sao `before-import` ghi trước khi thay; nhập bản thiếu deck → deck thừa thành xoá mềm; nguồn `vocabvip.v1` được nhận và không bị sửa; đổi tên bù `2208 → 1511`, `3108 → 1611` hiện trước khi ghi; máy chủ lỗi + chưa có bản lưu → báo lỗi chứ không mời chuyển dữ liệu; đổi tài khoản → bỏ bản lưu cũ; 320–1100px không tràn ngang; console không lỗi.
+- Chưa thử: Supabase thật (đặc biệt `save_state` thật và lỗi `REV_CONFLICT` thật có đúng chữ để app nhận ra), điện thoại thật.
+- **Việc của Khang** (`npm run dev` rồi mở `http://127.0.0.1:5174`; bản này CHƯA push nên trang thật `/vocab/v2/` chưa có):
+  1. Khi chưa đăng nhập, dán vào console: `const {supabase:s}=await import('/src/supabase.ts'); console.log(await s.from('decks').select('*'), await s.from('decks').insert({id:'thu',data:{}}))` → dòng đầu `data: []`, dòng sau có `error`.
+  2. Đăng nhập bằng tài khoản thật → thấy màn Chuyển dữ liệu → Chọn file JSON (file xuất từ v1 MỚI NHẤT, không phải file 11/11 nếu sau đó đã học thêm) → xem tóm tắt → "Chuyển vào Recall".
+  3. Học phần: đủ deck. Cài đặt: dòng Dữ liệu đúng. Tải lại trang: vẫn vậy. Đăng xuất rồi đăng nhập lại: vẫn vậy.
+  4. DevTools → Network → Offline, đổi KPI (ví dụ 90 → 89, Enter) → thấy "đang chờ gửi"; bỏ Offline → tự gửi, về "Đã lưu trên máy chủ."; đổi lại 90.
+  5. Supabase Dashboard → Table Editor: `meta` 1 dòng, `decks` đủ số deck.
+  6. Điện thoại chỉ thử được sau khi push (cần Khang cho phép push `main`, sẽ deploy v2 có màn đăng nhập lên `/vocab/v2/`; v1 ở `/vocab/` không đổi).
+
 ---
 
 ## Phụ lục A — Sự thật về file JSON thật (để đối chiếu)

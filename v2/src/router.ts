@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
 
 /** Các màn của app. Định tuyến bằng hash để chạy được trên GitHub Pages và nút Back đi đúng màn. */
-export type Route = 'today' | 'decks' | 'settings';
+export type Route = 'today' | 'decks' | 'settings' | 'import';
 
 const PATHS: Record<Route, string> = {
   today: '#/',
   decks: '#/decks',
   settings: '#/settings',
+  import: '#/import',
 };
 
 /** Đường dẫn (hash) của một màn, dùng cho thuộc tính href. */
@@ -19,6 +20,7 @@ function parse(hash: string): Route | null {
   if (path === '') return 'today';
   if (path === 'decks') return 'decks';
   if (path === 'settings') return 'settings';
+  if (path === 'import') return 'import';
   return null;
 }
 
