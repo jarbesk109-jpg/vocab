@@ -115,3 +115,66 @@ export function summarize(o) {
   Object.keys(o.activity || {}).forEach(bump);
   return { sets: (o.sets || []).length, cards, answers, last };
 }
+
+/** Ba khoá chỉ v2 mới có trong `meta`; `toV1` bỏ chúng đi. */
+const V2_KEYS = ['schemaVersion', 'deckOrder', 'applied'];
+
+/**
+ * Dữ liệu v1 → v2 (PLAN.md mục 3.9). Không sửa đầu vào, không sao chép sâu:
+ * `decks` là chính các phần tử `sets` (nguyên vẹn, kể cả trường lạ và `_prevStreak`).
+ * @param {any} v1 dữ liệu dạng v1 (đã qua `normalize`)
+ * @returns {{ meta: any, decks: any[] }}
+ */
+export function toV2(v1) {
+  const { sets, ...rest } = v1;
+  const decks = [...(sets || [])];
+  return {
+    meta: { ...rest, schemaVersion: 2, deckOrder: decks.map((d) => d.id), applied: [] },
+    decks,
+  };
+}
+
+/**
+ * Dữ liệu v2 → v1: bỏ 3 khoá riêng của v2, ghép `sets` theo `deckOrder`.
+ * Không bao giờ làm mất deck: deck không có trong `deckOrder` xếp cuối (giữ thứ tự đang có);
+ * id trong `deckOrder` mà không có deck thì bỏ qua. Không sửa đầu vào.
+ * @param {any} meta
+ * @param {any[]} decks các deck CHƯA xoá
+ * @returns {any} dữ liệu dạng v1
+ */
+export function toV1(meta, decks) {
+  const out = { ...meta };
+  for (const k of V2_KEYS) delete out[k];
+  const order = Array.isArray(meta.deckOrder) ? meta.deckOrder : [];
+  const byId = new Map(decks.map((d) => [d.id, d]));
+  const sets = [];
+  for (const id of order) {
+    const d = byId.get(id);
+    if (d) {
+      sets.push(d);
+      byId.delete(id);
+    }
+  }
+  for (const d of decks) if (byId.get(d.id) === d) sets.push(d);
+  out.sets = sets;
+  return out;
+}
+
+/**
+ * Bản `a` (sắp nhập) có CŨ HƠN bản `b` (đang có) không. So theo `summarize`: số thẻ,
+ * lượt trả lời, ngày học gần nhất (đúng 3 phép so của v1, bản vá 11/11).
+ * Số thẻ bằng nhau KHÔNG có nghĩa là cùng tiến độ.
+ * @param {any} a dữ liệu dạng v1
+ * @param {any} b dữ liệu dạng v1
+ * @returns {{ kind: 'cards' | 'answers' | 'last', a: number | string, b: number | string }[]}
+ *   rỗng khi `a` không cũ hơn `b` ở mặt nào; chữ cảnh báo do giao diện dựng
+ */
+export function compareFreshness(a, b) {
+  const x = summarize(a);
+  const y = summarize(b);
+  const warns = [];
+  if (x.cards < y.cards) warns.push({ kind: 'cards', a: x.cards, b: y.cards });
+  if (x.answers < y.answers) warns.push({ kind: 'answers', a: x.answers, b: y.answers });
+  if (y.last && x.last < y.last) warns.push({ kind: 'last', a: x.last, b: y.last });
+  return warns;
+}

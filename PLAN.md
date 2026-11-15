@@ -551,7 +551,7 @@ Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục
 
 Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ liệu, chấm đáp án, kho lệnh, máy trạng thái phiên); ba task nhỏ ở cuối nếu không kịp thì làm sau cũng được. 2.7 đứng trước 2.5 vì kho lệnh gọi `bumpCard`, `overrideRight`.
 
-- [ ] **2.4 Chuyển dữ liệu v1 ⇄ v2** — [TDD] — cỡ 1,5 giờ
+- [x] **2.4 Chuyển dữ liệu v1 ⇄ v2** — [TDD] — cỡ 1,5 giờ
   - File: `logic/migrate.js`, `tests/migration.test.js`.
   - Test viết trước: `toV1(toV2(x))` bằng `x` với file thật; `toV2` giữ 8 deck, 175 thẻ, 713, 27 `_prevStreak`, thứ tự deck; `planToday` trên dữ liệu sau `toV2` ở 11/11 ra đúng bảng mục 3.2; `compareFreshness`: cùng số thẻ nhưng ít lượt trả lời hơn → cảnh báo; ngày học gần nhất cũ hơn → cảnh báo; giống hệt → không cảnh báo.
   - Xong khi: `npm test` xanh.
@@ -810,6 +810,11 @@ Thử thêm ngoài checklist:
 **Luật đổi tên deck (Khang 15/11)**
 - Đã thêm mục 3.10, `logic/decks.js` (`day1Name`, `renameOnDay1`), `tests/decks.test.js`. Phần nối vào app nằm ở lệnh `sessionDone` của task 2.5.
 - **Khang xem lại 5 chỗ người thực thi tự hiểu** (ghi ở mục 3.10): (1) ngày trong tên là ngày học, mốc 4h sáng; (2) chỉ đổi một lần, sau đó sửa tay được, deck cũ không đổi hồi tố; (3) trùng cả với deck cũ cùng `DDMM` năm trước; (4) hết `z` thì `-27`; (5) tên cũ không lưu lại, và v1 đang dùng hằng ngày KHÔNG tự đổi tên (deck xong Ngày 1 bằng v1 trong lúc chờ v2 vẫn giữ tên cũ). Muốn v1 cũng đổi tên thì phải vá `app.js` và ra tag `v1-live-2`: báo nếu cần.
+
+**Task 2.4 (15/11)**
+- `decks` của `toV2` là MẢNG các deck (đúng thứ tự `sets`), dùng lại chính các đối tượng deck, không sao chép sâu.
+- `toV1`: deck không có trong `deckOrder` (ví dụ vừa tạo ở máy khác) xếp cuối chứ không bị bỏ; id trong `deckOrder` mà không còn deck thì bỏ qua. Đặc tả không nói tới hai trường hợp này; chọn cách không bao giờ làm mất deck.
+- `compareFreshness(a, b)` nhận hai bản dữ liệu dạng v1, trả về mảng `{ kind: 'cards' | 'answers' | 'last', a, b }` (đúng 3 phép so của v1); chữ cảnh báo tiếng Việt để màn chuyển dữ liệu (2.6) dựng.
 
 ---
 

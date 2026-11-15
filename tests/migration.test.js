@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   OFFSETS,
   addDays,
+  compareFreshness,
   computeStreak,
   dayDiff,
   emptyState,
@@ -13,6 +14,8 @@ import {
   planToday,
   studyDay,
   summarize,
+  toV1,
+  toV2,
 } from '../logic/index.js';
 import { mkCard, mkDeck, mkState, mkStudiedDeck } from './fixtures/small.js';
 
@@ -181,6 +184,112 @@ describe('normalize / summarize / emptyState với dữ liệu giả', () => {
   });
 });
 
+describe('toV2 / toV1 với dữ liệu giả (mục 3.9)', () => {
+  const src = () =>
+    mkState([mkStudiedDeck('a', '2026-11-10', { la: 1 }), mkDeck('b'), mkDeck('c', { n: 0 })], {
+      journeyStart: '2026-10-06',
+      streak: { freezeUsedDays: ['2026-11-01'] },
+      khoaLa: { x: [1, 2] },
+    });
+
+  it('toV2: decks = các phần tử sets nguyên vẹn, đúng thứ tự', () => {
+    const x = src();
+    const { decks } = toV2(x);
+    expect(decks).toEqual(x.sets);
+    expect(decks.map((d) => d.id)).toEqual(['id-a', 'id-b', 'id-c']);
+  });
+
+  it('toV2: meta = mọi khoá cấp cao nhất khác sets + schemaVersion 2, deckOrder, applied rỗng', () => {
+    const x = src();
+    const { meta } = toV2(x);
+    const { sets, ...rest } = x;
+    expect(meta).toEqual({ ...rest, schemaVersion: 2, deckOrder: ['id-a', 'id-b', 'id-c'], applied: [] });
+    expect('sets' in meta).toBe(false);
+  });
+
+  it('toV1(toV2(x)) bằng đúng x; không còn khoá riêng của v2', () => {
+    const x = src();
+    const { meta, decks } = toV2(x);
+    const back = toV1(meta, decks);
+    expect(back).toEqual(x);
+    expect(Object.keys(back).sort()).toEqual(Object.keys(x).sort());
+    for (const k of ['schemaVersion', 'deckOrder', 'applied']) expect(k in back).toBe(false);
+  });
+
+  it('toV2 và toV1 không sửa đầu vào', () => {
+    const x = src();
+    const before = structuredClone(x);
+    const v2 = toV2(x);
+    expect(x).toEqual(before);
+    const v2Before = structuredClone(v2);
+    toV1(v2.meta, v2.decks);
+    expect(v2).toEqual(v2Before);
+  });
+
+  it('toV1 ghép sets theo deckOrder, không theo thứ tự mảng decks', () => {
+    const { meta, decks } = toV2(src());
+    const back = toV1(meta, [decks[2], decks[0], decks[1]]);
+    expect(back.sets.map((s) => s.name)).toEqual(['a', 'b', 'c']);
+    const back2 = toV1({ ...meta, deckOrder: ['id-c', 'id-a', 'id-b'] }, decks);
+    expect(back2.sets.map((s) => s.name)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('toV1 không làm mất deck: deck thiếu trong deckOrder xếp cuối, id thừa trong deckOrder bỏ qua', () => {
+    const { meta, decks } = toV2(src());
+    const back = toV1({ ...meta, deckOrder: ['id-b', 'id-đã-xoá'] }, decks);
+    expect(back.sets.map((s) => s.name)).toEqual(['b', 'a', 'c']);
+    const noOrder = { ...meta };
+    delete noOrder.deckOrder;
+    expect(toV1(noOrder, decks).sets.map((s) => s.name)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('app trống: toV2 ra 0 deck, đi về vẫn là app trống', () => {
+    const e = emptyState();
+    const v2 = toV2(e);
+    expect(v2.decks).toEqual([]);
+    expect(v2.meta.deckOrder).toEqual([]);
+    expect(toV1(v2.meta, v2.decks)).toEqual(emptyState());
+  });
+});
+
+describe('compareFreshness (mục 3.9): a có cũ hơn b không', () => {
+  const card = (r) => mkCard('x', { prod: { r, streak: r, last: '2026-11-10' } });
+  const state = (r, over = {}) => mkState([mkDeck('a', { cards: [card(r), mkCard('y')] })], over);
+
+  it('giống hệt → không cảnh báo', () => {
+    expect(compareFreshness(state(3), state(3))).toEqual([]);
+  });
+  it('cùng số thẻ nhưng ít lượt trả lời hơn → cảnh báo answers', () => {
+    expect(compareFreshness(state(2), state(5))).toEqual([{ kind: 'answers', a: 2, b: 5 }]);
+  });
+  it('ngày học gần nhất cũ hơn → cảnh báo last', () => {
+    const a = state(3);
+    const b = state(3, { activity: { '2026-11-12': { n: 1 } } });
+    expect(compareFreshness(a, b)).toEqual([{ kind: 'last', a: '2026-11-10', b: '2026-11-12' }]);
+  });
+  it('ít thẻ hơn → cảnh báo cards', () => {
+    const a = mkState([mkDeck('a', { cards: [card(3)] })]);
+    expect(compareFreshness(a, state(3))).toEqual([{ kind: 'cards', a: 1, b: 2 }]);
+  });
+  it('cũ hơn về mọi mặt → đủ 3 cảnh báo theo thứ tự cards, answers, last', () => {
+    const a = mkState([mkDeck('a', { n: 1 })]);
+    const b = state(3);
+    expect(compareFreshness(a, b).map((w) => w.kind)).toEqual(['cards', 'answers', 'last']);
+    expect(compareFreshness(a, b)[2]).toEqual({ kind: 'last', a: '', b: '2026-11-10' });
+  });
+  it('a MỚI hơn b → không cảnh báo; b chưa học gì → không cảnh báo last', () => {
+    expect(compareFreshness(state(5), state(2))).toEqual([]);
+    expect(compareFreshness(mkState([mkDeck('a', { n: 2 })]), mkState([mkDeck('b', { n: 2 })]))).toEqual([]);
+  });
+  it('không sửa đầu vào', () => {
+    const a = state(2);
+    const b = state(5);
+    const before = structuredClone([a, b]);
+    compareFreshness(a, b);
+    expect([a, b]).toEqual(before);
+  });
+});
+
 describe.skipIf(!hasFixture)('file JSON thật 11/11 (migration)', () => {
   it('8 deck, 175 thẻ, tên đúng thứ tự', () => {
     const o = loadReal();
@@ -301,5 +410,59 @@ describe.skipIf(!hasFixture)('file JSON thật 11/11 (migration)', () => {
       count: 0, best: 5, freezes: 0, status: 'pending', needUnits: 1,
     });
     expect(o).toEqual(loadReal());
+  });
+
+  // Task 2.4: chuyển dữ liệu v1 ⇄ v2 (mục 3.9).
+  it('toV1(toV2(x)) bằng đúng x với file thật (so sâu + so chuỗi JSON từng deck)', () => {
+    const x = loadReal();
+    const { meta, decks } = toV2(loadReal());
+    const back = toV1(meta, decks);
+    expect(back).toEqual(x);
+    expect(Object.keys(back).sort()).toEqual(Object.keys(x).sort());
+    expect(back.sets.map((s) => JSON.stringify(s))).toEqual(x.sets.map((s) => JSON.stringify(s)));
+  });
+
+  it('toV2 giữ 8 deck, 175 thẻ, 713 lượt, 27 _prevStreak, thứ tự deck', () => {
+    const x = loadReal();
+    const { meta, decks } = toV2(loadReal());
+    expect(decks.length).toBe(8);
+    expect(decks.map((d) => d.name)).toEqual(['1608', '1708', '2008', '2108', '2208', '3108', '0209', '1109']);
+    expect(meta.deckOrder).toEqual(x.sets.map((s) => s.id));
+    expect(decks.reduce((n, d) => n + d.cards.length, 0)).toBe(175);
+    let answers = 0;
+    let prev = 0;
+    for (const d of decks)
+      for (const c of d.cards)
+        for (const k of DIRS) {
+          answers += c.st[k].r + c.st[k].w;
+          if ('_prevStreak' in c.st[k]) prev++;
+        }
+    expect(answers).toBe(713);
+    expect(prev).toBe(27);
+    expect(meta).toMatchObject({ schemaVersion: 2, applied: [], journeyStart: '2026-10-06' });
+    expect(meta.settings).toEqual(x.settings);
+    expect(meta.activity).toEqual(x.activity);
+    expect('sets' in meta).toBe(false);
+  });
+
+  it('planToday trên dữ liệu sau toV2 ở 11/11 ra đúng bảng mục 3.2', () => {
+    const { decks } = toV2(loadReal());
+    const p = planToday(decks, '2026-11-11');
+    expect(stageOf(p.reviews)).toEqual([['2108', 3], ['1708', 7], ['2008', 7]]);
+    expect(p.fresh.set.name).toBe('2208');
+    expect(p.more).toEqual([]);
+    expect(p.gate).toEqual({ open: true, reason: 'onTrack', lateCount: 0, daysSinceNew: 34 });
+    expect(names(p.upcoming)).toEqual(['1608']);
+    expect(names(p.stock)).toEqual(['3108', '0209', '1109']);
+  });
+
+  it('compareFreshness với file thật: giống hệt → không cảnh báo; bớt 1 lượt trả lời → cảnh báo dù vẫn 175 thẻ', () => {
+    expect(compareFreshness(loadReal(), loadReal())).toEqual([]);
+    const older = loadReal();
+    const dir = older.sets.flatMap((s) => s.cards).map((c) => c.st.prod).find((d) => d.r > 0);
+    dir.r--;
+    expect(summarize(older).cards).toBe(175);
+    expect(compareFreshness(older, loadReal())).toEqual([{ kind: 'answers', a: 712, b: 713 }]);
+    expect(compareFreshness(loadReal(), older)).toEqual([]);
   });
 });
