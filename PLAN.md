@@ -698,6 +698,18 @@ Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13b (v�
   - **I**: nhắc giờ học cố định (thông báo).
   - Đã bỏ: B (vòng vá lỗi sau Kiểm tra), E (giới hạn số từ mỗi deck), H (tự dùng băng).
 
+**Khang ghi thêm 15/11 (CHƯA làm, chưa lên task; mục 1–6 là việc Khang muốn có, mục 7 là ĐỀ XUẤT chưa duyệt):**
+
+1. **Kho từ vựng.** Khang nạp file `C:\Kingston\Vibe-coding\Vocab-app\kho-tu-vung.txt` (mỗi dòng `từ<Tab>nghĩa`; file này KHÔNG đưa lên repo). Khi kho deck mới hết mà hôm đó cần deck mới, app tự lấy ngẫu nhiên 15 từ trong kho tạo deck mới và xoá các từ đó khỏi kho; bỏ qua từ đã có trong deck khác; hôm đó đã có deck mới thì không tạo. Kho còn dưới khoảng 3 deck thì báo "sắp hết kho". Học hết kho thì hiện màn chúc mừng lớn.
+2. **Thẻ yếu.** Thẻ còn sai ở lần ôn +16 không xong vòng cùng deck, mà tách vào deck "Thẻ yếu" do app tự tạo, chạy lịch ôn riêng.
+3. **Chế độ quay lại.** Nghỉ từ 3 ngày trở lên thì ngày đầu chỉ đưa 1 deck, chọn deck dễ đạt nhất (thuộc nhiều nhất), lời chào nhẹ, ẩn bớt số ngày trễ, hiện chuỗi dài nhất; từ hôm sau quay về thứ tự ưu tiên thường.
+4. **Gợi ý "Học lại".** Deck trễ quá 3 lần khoảng ôn của mốc hiện tại thì gợi ý "Học lại" trước khi Kiểm tra.
+5. **Dịch đoạn văn.** Bản copy-paste không cần API, chọn được deck cụ thể và có gợi ý sẵn. Bản gọi AI (đặt câu, chấm câu) để sau.
+6. **Keepalive.** Đang chạy 5 ngày/lần; thêm việc tự commit mỗi tháng để GitHub không tắt workflow khi repo lâu không có commit.
+7. **ĐỀ XUẤT, Khang chưa duyệt:** mỗi tuần một bài trộn khoảng 20 câu từ các deck đã xong vòng, tính là một lượt. (Là bản cụ thể hơn của đề xuất **D** ở trên.)
+
+**Rủi ro đã chấp nhận (Khang 15/11):** ngày học offline không tính streak.
+
 ---
 
 ## 7. Luật nào nằm ở đâu
@@ -979,6 +991,7 @@ Thử thêm ngoài checklist:
 - **Quan sát, chưa đổi luật:** deck mới HỌC DỞ (có câu trả lời nhưng chưa xong Ngày 1, chưa có `history`) không có `startedDay`, nên không tính là "đã bắt đầu deck mới" khi xét trần 3 ngày. Hệ quả thấy trên màn hình: `2208` học dở 7 thẻ hôm nay thì Hôm nay vừa có `2208` (HỌC TIẾP) vừa mời thêm deck mới `3108` (lý do `ceiling`). Đúng theo chữ của mục 3.2; nếu Khang muốn deck học dở chặn việc mời deck mới khác thì cần sửa mục 3.2.
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, ngày học 15/11, 80/80 mục đạt. Mỗi tình huống so thẳng màn hình với `planToday` / `computeStreak` / `paceInfo` tính ngoài trình duyệt: file thật (`2108`, `1708`, `2008` + mới `2208`; chờ thêm `1608`; kho `3108`, `0209`, `1109`; cổng `ceiling`); xong 1 deck ôn + học dở deck mới; xong Ngày 1 deck mới (tên đổi thành `1511`, cổng `doneNew`); xong hết; streak đang nguy có băng, đã dùng băng; nhịp học có số; banner Học tiếp; tài khoản 0 deck. Bề rộng 320, 360, 480, 719, 720, 1100, 1600px: không tràn ngang, vùng bấm ≥ 44px, chữ không bị cắt. Bấm "Bắt đầu" tới đúng deck, Back về Hôm nay. Console không lỗi.
 - Chưa thử được: "xong một deck thì danh sách cập nhật không giật" (chưa có màn Học để làm xong một deck ngay trên trang; mới thử bằng cách đổi dữ liệu rồi mở lại), điện thoại thật. Thử lại khi xong 2.10 / 2.11.
+- **Khang trả lời (15/11):** (1) KHÔNG chặn: giữ luật 3.2 hiện tại, deck mới học dở vẫn để app mời deck mới khác. (2) Push 2.9. Khang cũng ghi thêm 7 mục vào Phase 3 (mục 6) và một rủi ro đã chấp nhận; `kho-tu-vung.txt` được thêm vào `.gitignore` để không lỡ đưa lên repo.
 
 ---
 
