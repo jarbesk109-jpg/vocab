@@ -631,7 +631,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: đầu màn là số streak + trạng thái; MỘT nút chính "Bắt đầu" cho deck đáng làm nhất (kèm số câu); bên dưới các deck còn lại của hôm nay (tối đa 4 tính cả deck chính), deck đã xong có dấu ✓; dòng cổng deck mới; dòng nhịp học; hai mục gập "Đang chờ thêm" và "Kho deck mới"; banner "Học tiếp" khi có phiên dang dở.
   - Tiêu chí tay: khớp `planToday`; xong một deck thì danh sách cập nhật không giật; dùng tốt ở 360px.
 
-- [ ] **2.10 Màn Học và Viết** — [UI] — cỡ 2 giờ
+- [x] **2.10 Màn Học và Viết** — [UI] — cỡ 2 giờ
   - File: `v2/src/screens/Learn.tsx`, `v2/src/components/` (thẻ câu hỏi, ô đáp án, thanh tiến độ), `v2/src/audio.ts` (Web Speech API, chọn giọng tiếng Anh, nút tắt tiếng toàn cục nhớ theo máy).
   - Hành vi: thanh tiến độ; bật/tắt Trắc nghiệm và Tự luận ngay trên màn; chọn chiều; chọn cỡ mẻ (7/15/20/30/tất cả); phím tắt mục 3.8; ô đáp án có `autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"`; nhắc đổi bàn phím khi `keyboardMismatch`; Anh→Việt đọc từ khi câu hỏi hiện, Việt→Anh đọc sau khi trả lời.
   - Tiêu chí tay: học hết một deck chỉ bằng bàn phím; thoát giữa chừng rồi "Học tiếp" đúng chỗ; trên điện thoại bàn phím không che câu hỏi; chuyển câu mượt.
@@ -992,6 +992,25 @@ Thử thêm ngoài checklist:
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, ngày học 15/11, 80/80 mục đạt. Mỗi tình huống so thẳng màn hình với `planToday` / `computeStreak` / `paceInfo` tính ngoài trình duyệt: file thật (`2108`, `1708`, `2008` + mới `2208`; chờ thêm `1608`; kho `3108`, `0209`, `1109`; cổng `ceiling`); xong 1 deck ôn + học dở deck mới; xong Ngày 1 deck mới (tên đổi thành `1511`, cổng `doneNew`); xong hết; streak đang nguy có băng, đã dùng băng; nhịp học có số; banner Học tiếp; tài khoản 0 deck. Bề rộng 320, 360, 480, 719, 720, 1100, 1600px: không tràn ngang, vùng bấm ≥ 44px, chữ không bị cắt. Bấm "Bắt đầu" tới đúng deck, Back về Hôm nay. Console không lỗi.
 - Chưa thử được: "xong một deck thì danh sách cập nhật không giật" (chưa có màn Học để làm xong một deck ngay trên trang; mới thử bằng cách đổi dữ liệu rồi mở lại), điện thoại thật. Thử lại khi xong 2.10 / 2.11.
 - **Khang trả lời (15/11):** (1) KHÔNG chặn: giữ luật 3.2 hiện tại, deck mới học dở vẫn để app mời deck mới khác. (2) Push 2.9. Khang cũng ghi thêm 7 mục vào Phase 3 (mục 6) và một rủi ro đã chấp nhận; `kho-tu-vung.txt` được thêm vào `.gitignore` để không lỡ đưa lên repo.
+
+**Task 2.10 (15/11): màn Học và Viết**
+- File mới: `v2/src/screens/Learn.tsx`, `v2/src/components/ProgressBar.tsx`, `QuestionCard.tsx`, `AnswerInput.tsx` (ô gõ + danh sách trắc nghiệm), `v2/src/audio.ts`. Sửa `v2/src/App.tsx` (`#/study/<id>` mở màn này), `v2/src/screens/Today.tsx` (export `leftToday`), `v2/src/styles/base.css`.
+- Luồng trong `#/study/<id>`: thiết lập (Chế độ Học/Viết, Chiều, Loại câu, Cỡ mẻ; nhớ theo máy ở `recall.learn.prefs.v1`) → phiên → kết quả. Phiên dở lưu ở `recall.session.v1` sau mỗi câu; mở lại đúng deck đó (hoặc bấm banner "Học tiếp") là vào thẳng câu đang dở. Xong phiên thì gỡ bản lưu.
+- Phím: `1–4` chọn, `Enter` trả lời / đi tiếp, `\` = "Tôi gõ nhầm phím" (Học) / "Tôi đã gõ đúng" (Viết), `Space` nghe lại (chỉ khi không làm lộ đáp án: Anh→Việt, hoặc đã trả lời; đang gõ trong ô thì Space vẫn là dấu cách). Thiết lập và kết quả cũng đi bằng Enter.
+- Âm thanh (`audio.ts`, chuyển cách làm của v1): chọn giọng en-US, ưu tiên Google rồi giọng có sẵn; Anh→Việt đọc khi câu hiện, Việt→Anh đọc sau khi trả lời; nút tắt tiếng trên thanh đầu phiên, nhớ ở `recall.muted`.
+- Người thực thi tự quyết (Khang xem lại):
+  - Mặc định lần đầu: Học, Việt → Anh, bật cả Trắc nghiệm và Tự luận, mẻ = cả deck. Cỡ mẻ chỉ hiện các cỡ nhỏ hơn số thẻ của deck + "Tất cả (n)". Không tắt được cả hai loại câu (tắt cái này thì cái kia tự bật).
+  - "Bật/tắt Trắc nghiệm và Tự luận ngay trên màn": nằm ở phần thiết lập của chính màn này; đang giữa phiên thì bấm "Thiết lập" (bỏ phiên dở, các câu đã trả lời vẫn được ghi) để đổi.
+  - Trả lời đúng thì tự qua câu: trắc nghiệm sau 0,45 giây, tự luận sau 0,8 giây (đủ nhìn lại đáp án); Enter qua ngay. Trắc nghiệm SAI thì dừng lại hiện đáp án, chờ Enter / "Tiếp" (máy trạng thái đã ghi sai ngay như v1; chỉ là màn hình giữ lại).
+  - Enter khi ô trống: bỏ qua, không chấm sai (tránh lỡ tay bấm Enter hai lần). Thêm nút chữ "Chưa nhớ, xem đáp án" (tính như trả lời sai).
+  - Ô đáp án không bị disable lúc hiện phản hồi (chỉ khoá nội dung), và các nút bấm không lấy focus khỏi ô: để bàn phím điện thoại không đóng/mở giữa các câu. Trong phiên, tiêu đề màn được ẩn để đề + ô đáp án nằm trong khoảng 290px đầu màn.
+  - Phiên bắt đầu lúc mất mạng: hiện dòng "chỉ là luyện tập, không ghi tiến độ" (luật ở 2.5). Cờ này lưu cùng phiên dở, "Học tiếp" giữ nguyên.
+  - Kết quả Học/Viết (màn Kết quả đầy đủ là của 2.11): % chính xác, và với deck mới: "Còn x/n thẻ chưa đúng lần nào hôm nay" hoặc "Xong Ngày 1: học phần đổi tên thành … Mai ôn lần đầu."
+  - Deck đang ôn mở `#/study/<id>` hiện chỉ có Học và Viết, kèm dòng "chỉ lên mốc bằng bài Kiểm tra (đang được làm)". Nút "Bắt đầu" của deck ôn ở Hôm nay vẫn ghi "Kiểm tra · 2n câu" nhưng CHƯA dẫn tới Kiểm tra cho tới 2.11.
+  - Thẻ đang hỏi bị xoá ở máy khác giữa phiên: dừng phiên, về thiết lập kèm thông báo.
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả (không chạm Supabase thật) và giọng đọc giả, 70/70 mục đạt: học hết mẻ 7 và cả deck 25 thẻ CHỈ bằng bàn phím; trắc nghiệm đúng/sai; tự luận sai chưa ghi cho tới "Tiếp", phím `\` tính đúng + đếm typo; nhắc bàn phím tiếng Việt không chấm, không ghi; thoát giữa chừng → banner "Học tiếp" → tải lại trang → đúng câu, đúng tiến độ, đúng thứ tự lựa chọn; xong Ngày 1 → deck đổi tên `1511`, mốc 1, Hôm nay có ✓ ngay không cần tải lại (bù mục chưa thử của 2.9), streak "đã tính"; Viết: sai phải gõ lại, phím `\` hoàn lại, `history` thêm `mode: 'write'`, mốc không đổi; bắt đầu lúc mất mạng → không lệnh nào vào hàng chờ; rớt mạng giữa phiên → làm tiếp, "đang chờ gửi", có mạng tự gửi; tắt tiếng không đọc gì và nhớ sau khi tải lại; 320/360/414px không tràn ngang, vùng bấm ≥ 44px, phản hồi hiện ra không xê dịch câu hỏi; console không lỗi.
+- Chưa thử được: điện thoại thật (bàn phím có che câu hỏi không, bàn phím có đóng/mở giữa các câu không), giọng đọc thật trên từng máy, cảm giác "chuyển câu mượt" bằng mắt. Khang thử giúp ở `/vocab/v2/`.
+- Lưu ý khi thử trên trang thật: phiên Học/Viết bắt đầu lúc có mạng sẽ GHI vào dữ liệu thật trong tài khoản (điểm thẻ, hoạt động, streak, xong Ngày 1 thì đổi tên deck).
 
 ---
 

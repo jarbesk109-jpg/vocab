@@ -31,7 +31,7 @@ function isNew(item: Item): boolean {
 }
 
 /** Số thẻ chưa đúng lần nào hôm nay (deck mới học dở: phần còn lại để xong Ngày 1). */
-function leftToday(set: any, today: string): number {
+export function leftToday(set: any, today: string): number {
   return (set.cards || []).filter(
     (c: any) => !['prod', 'recog'].some((k) => c.st?.[k]?.last === today && c.st[k].streak >= 1),
   ).length;

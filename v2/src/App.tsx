@@ -4,6 +4,7 @@ import { authErrorText, useSession } from './auth';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
 import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
 import { Import } from './screens/Import';
+import { Learn } from './screens/Learn';
 import { Login } from './screens/Login';
 import { Today } from './screens/Today';
 import { supabase } from './supabase';
@@ -331,9 +332,7 @@ function Shell({ userId, email }: { userId: string; email: string }) {
           )}
           {route === 'study' && (
             <Screen route="study" sub={state.decks.find((x: any) => x.id === studyDeckId)?.name}>
-              <Empty title="Màn Học đang được làm">
-                Học, Viết và Kiểm tra sẽ mở ở đây. <a href={hrefOf('today')}>Về Hôm nay</a>
-              </Empty>
+              <Learn key={studyDeckId} deckId={studyDeckId} state={state} store={store} today={studyDay(Date.now())} />
             </Screen>
           )}
           {route === 'import' && (
