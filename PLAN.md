@@ -29,7 +29,7 @@ Mục tiêu số 1: Khang mở app MỖI NGÀY. Thước đo: giữ được str
 - KHÔNG BAO GIỜ force push (`--force`, `--force-with-lease`), không `reset --hard` lên nhánh đã push, không sửa lịch sử đã push.
 - Push bị từ chối thì DỪNG và báo Khang, không tự xử lý.
 - Phase 1: làm hết một mạch trên nhánh `phase-1`, KHÔNG push giữa chừng. Xong task 1.7 thì DỪNG. Khang xuất backup v1, thử theo checklist, đồng ý rồi mới làm task 1.8 (push MỘT lần).
-- Phase 2: không push cho tới khi xong task 2.2. Task 2.2 và 2.17 (đổi cách trang thật được phục vụ) phải có Khang xác nhận trước khi push.
+- Phase 2: làm trên nhánh `phase-2`; không push cho tới khi xong task 2.2 (Đợt A của mục 5 làm trước 2.2 nên cả Đợt A không push). Task 2.2 và 2.17 (đổi cách trang thật được phục vụ) phải có Khang xác nhận trước khi push.
 - Không bao giờ commit: file JSON dữ liệu thật, `HANDOVER.md`, `RULES.md`, `PROMPT_FABLE.md`, `.env*`, `node_modules/`.
 
 **Hai thư mục**
@@ -545,6 +545,50 @@ Trong suốt Phase 2, v1 đã vá vẫn là app học hằng ngày của Khang. 
 Nhận diện Recall: trung tính kiểu công cụ, gọn; một màu nhấn xanh chàm (sáng `#4F46E5`, tối `#818CF8`); màu ấm duy nhất là cam của ngọn lửa streak; font hệ thống; có sáng/tối.
 Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục bằng `min()`/`clamp()`, không nhảy giật khi kéo cửa sổ; dùng `rem` để zoom trình duyệt 80–200% không vỡ; điểm ngắt 720px; vùng bấm ≥ 44px trên màn cảm ứng; chuyển cảnh 150–250ms với `cubic-bezier(0.22, 1, 0.36, 1)`; tôn trọng `prefers-reduced-motion`; không xê dịch bố cục khi dữ liệu về.
 
+**Thứ tự làm (sắp lại 15/11).** Fable chỉ dùng được tới hết 16/11, nên làm TRƯỚC toàn bộ logic có TDD không cần giao diện (Đợt A), rồi mới tới giao diện và hạ tầng (Đợt B). Số task giữ nguyên như cũ để các chỗ tham chiếu (2.2, 2.17…) không đổi; ba task vừa logic vừa giao diện (2.12, 2.13, 2.14) tách thành phần `a` (logic, Đợt A) và phần `b` (giao diện, Đợt B). Luật "task đầu tiên chưa tick, theo thứ tự" tính theo thứ tự LIỆT KÊ trong file, không theo số. Làm trên nhánh `phase-2`; không push cho tới khi xong 2.2.
+
+### Đợt A — logic thuần, TDD, không cần giao diện (khoảng 9 giờ; mục tiêu xong trước hết 16/11)
+
+Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ liệu, chấm đáp án, kho lệnh, máy trạng thái phiên); ba task nhỏ ở cuối nếu không kịp thì làm sau cũng được. 2.7 đứng trước 2.5 vì kho lệnh gọi `bumpCard`, `overrideRight`.
+
+- [ ] **2.4 Chuyển dữ liệu v1 ⇄ v2** — [TDD] — cỡ 1,5 giờ
+  - File: `logic/migrate.js`, `tests/migration.test.js`.
+  - Test viết trước: `toV1(toV2(x))` bằng `x` với file thật; `toV2` giữ 8 deck, 175 thẻ, 713, 27 `_prevStreak`, thứ tự deck; `planToday` trên dữ liệu sau `toV2` ở 11/11 ra đúng bảng mục 3.2; `compareFreshness`: cùng số thẻ nhưng ít lượt trả lời hơn → cảnh báo; ngày học gần nhất cũ hơn → cảnh báo; giống hệt → không cảnh báo.
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.7 Chấm đáp án và dựng bài Kiểm tra** — [TDD] — cỡ 1,5 giờ
+  - File: `logic/answers.js`, `logic/session.js` (`mulberry32`, `buildTest`), `tests/answers.test.js`, `tests/session.test.js`.
+  - Test viết trước: mục 3.6 (`To Reduce.` = `reduce`; `lead to / result in` nhận một trong hai; `chinh phu` = `chính phủ`; `dan den` = `dẫn đến`; gõ một trong hai nghĩa của `thậm chí, ngay cả`; `bumpCard` đúng/sai; `overrideRight` hoàn lại; `keyboardMismatch`) và mục 3.8 (`buildTest`).
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.5 Kho lệnh và hàng chờ gửi** — [TDD] — cỡ 2 giờ
+  - File: `logic/store.js`, `tests/store.test.js` (dùng backend giả trong bộ nhớ có `rev`).
+  - Test viết trước: mỗi loại lệnh đổi state đúng; `sessionDone` làm deck xong Ngày 1 thì deck đổi tên theo mục 3.10 (deck thứ hai cùng ngày ra hậu tố `b`; deck đã xoá mềm không tính trùng; lệnh gửi muộn vẫn lấy tên theo `day` lúc phát sinh), `sessionDone` của deck ôn không đổi tên; phát lệnh khi backend lỗi mạng → lệnh nằm trong outbox, giao diện vẫn thấy kết quả; mạng về → outbox rỗng, server đúng; gửi trùng một lệnh (đã commit nhưng mất phản hồi) → không cộng hai lần; server đổi `rev` giữa chừng → tải lại, áp lại, không mất thay đổi của bên nào; outbox đọc lại được sau "khởi động lại"; lệnh giữ đúng `day` lúc phát sinh dù gửi muộn; phiên offline không phát lệnh.
+  - `logic/store.js` vẫn thuần: nơi lưu outbox/cache (`localStorage`) và backend được TRUYỀN VÀO qua tham số, test dùng bản giả trong bộ nhớ.
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.8 Máy trạng thái phiên Học, Viết, Kiểm tra** — [TDD] — cỡ 2 giờ
+  - File: `logic/session.js`, `tests/session.test.js`.
+  - Test viết trước: Học với 2 bước: đúng `mcq` rồi đúng `write` mới tính xong; sai thì về bước đầu, gắn sao, gặp lại sau 2 câu; chỉ bật `write` thì 1 bước; mẻ nhỏ ưu tiên thẻ chưa đúng hôm nay; Viết: sai phải gõ lại, điểm tính lần đầu; Kiểm tra: `pct` = đúng / tổng, "Tôi đã gõ đúng" cộng lại điểm; tuần tự hoá rồi khôi phục giữa chừng cho cùng trạng thái; trắc nghiệm có đúng 1 đáp án đúng và các đáp án nhiễu không trùng nghĩa đáp án đúng.
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.12a Tiến độ từng học phần: logic** — [TDD] — cỡ 45 phút
+  - File: `logic/mastery.js`, `tests/mastery.test.js`.
+  - Test viết trước: mục 3.7; với file thật: `1608` thuộc cả hai chiều 100%, `stagesPassed` đã qua Mới, +1, +3, +7; `2208` 0% và chưa qua mốc nào.
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.14a Streak: sự kiện** — [TDD] — cỡ 30 phút
+  - File: `logic/streak.js` (`streakEvents`, mục 3.4), `tests/streak.test.js`.
+  - Test viết trước: số tăng 2 → 3 thì `fire`; 1 → 2 chưa `fire`; chạm 10, 50, 100, 200 thì `milestone`, 20 hay 150 thì không; số không tăng thì mọi cờ `false`; `freezeEarned` khi số băng tăng.
+  - Xong khi: `npm test` xanh.
+
+- [ ] **2.13a Soạn deck: logic** — [TDD] — cỡ 30 phút
+  - File: `logic/decks.js` (`parseCards`, `findDupTerms`; `day1Name`, `renameOnDay1` đã có), `tests/decks.test.js`.
+  - Test viết trước: `từ: nghĩa` mỗi dòng một thẻ, tách ở dấu `:` đầu tiên, bỏ dòng trống, đếm dòng lỗi; `findDupTerms` so theo `norm`, bỏ qua chính deck đang sửa.
+  - Xong khi: `npm test` xanh.
+
+### Đợt B — giao diện, hạ tầng (theo thứ tự cũ)
+
 - [ ] **2.1 Khung v2** — [UI] — cỡ 2 giờ
   - Mục tiêu: `v2/` chạy được với Vite + React + TypeScript; design token Recall; khung điều hướng (thanh dưới trên điện thoại, cột trái trên laptop); các màn rỗng: Hôm nay, Học phần, Cài đặt; định tuyến bằng hash.
   - File: `v2/index.html`, `v2/src/main.tsx`, `v2/src/App.tsx`, `v2/src/styles/tokens.css`, `v2/src/styles/base.css`, `vite.config.ts` (`root: 'v2'`, `base: './'`), `tsconfig.json` (`allowJs`, `checkJs` cho `logic/`), `package.json` (script `dev`, `build`).
@@ -565,31 +609,11 @@ Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục
   - Tiêu chí tay: đăng nhập đúng thì vào app, sai thì báo lỗi rõ; tải lại trang vẫn đăng nhập; Đăng xuất hoạt động; chưa đăng nhập mà `select` bảng `decks` bằng publishable key thì ra 0 dòng và `insert` bị từ chối (thử trong console).
   - Xong khi: tiêu chí đạt.
 
-- [ ] **2.4 Chuyển dữ liệu v1 ⇄ v2** — [TDD] — cỡ 1,5 giờ
-  - File: `logic/migrate.js`, `tests/migration.test.js`.
-  - Test viết trước: `toV1(toV2(x))` bằng `x` với file thật; `toV2` giữ 8 deck, 175 thẻ, 713, 27 `_prevStreak`, thứ tự deck; `planToday` trên dữ liệu sau `toV2` ở 11/11 ra đúng bảng mục 3.2; `compareFreshness`: cùng số thẻ nhưng ít lượt trả lời hơn → cảnh báo; ngày học gần nhất cũ hơn → cảnh báo; giống hệt → không cảnh báo.
-  - Xong khi: `npm test` xanh.
-
-- [ ] **2.5 Kho lệnh và hàng chờ gửi** — [TDD] — cỡ 2 giờ
-  - File: `logic/store.js`, `tests/store.test.js` (dùng backend giả trong bộ nhớ có `rev`).
-  - Test viết trước: mỗi loại lệnh đổi state đúng; `sessionDone` làm deck xong Ngày 1 thì deck đổi tên theo mục 3.10 (deck thứ hai cùng ngày ra hậu tố `b`; deck đã xoá mềm không tính trùng; lệnh gửi muộn vẫn lấy tên theo `day` lúc phát sinh), `sessionDone` của deck ôn không đổi tên; phát lệnh khi backend lỗi mạng → lệnh nằm trong outbox, giao diện vẫn thấy kết quả; mạng về → outbox rỗng, server đúng; gửi trùng một lệnh (đã commit nhưng mất phản hồi) → không cộng hai lần; server đổi `rev` giữa chừng → tải lại, áp lại, không mất thay đổi của bên nào; outbox đọc lại được sau "khởi động lại"; lệnh giữ đúng `day` lúc phát sinh dù gửi muộn; phiên offline không phát lệnh.
-  - Xong khi: `npm test` xanh.
-
 - [ ] **2.6 Nối Supabase và màn chuyển dữ liệu lần đầu** — [UI] — cỡ 2 giờ
   - File: `v2/src/data/supabaseBackend.ts` (`load` = `select` hai bảng; `save` = `rpc('save_state')`, ánh xạ lỗi `REV_CONFLICT`), `v2/src/data/useStore.ts`, `v2/src/screens/Import.tsx`.
   - Hành vi: tài khoản chưa có dữ liệu → màn chuyển dữ liệu. Nguồn 1: đọc thẳng `localStorage` `vocabvip.v1` (v1 và v2 cùng origin); nguồn 2: chọn file JSON. Hiện tóm tắt "N deck · N thẻ · N lượt trả lời · học gần nhất …" rồi mới ghi. Tài khoản đã có dữ liệu: so `compareFreshness`, cảnh báo nếu bản nhập cũ hơn, ghi `snapshots` trước khi thay.
   - Tiêu chí tay: nhập file thật → 8 deck, 175 thẻ, 713 lượt; tải lại trang và mở trên điện thoại thấy cùng dữ liệu; tắt mạng (DevTools offline) rồi phát một thay đổi → thấy trạng thái "đang chờ gửi", bật mạng → tự gửi.
   - Xong khi: tiêu chí đạt.
-
-- [ ] **2.7 Chấm đáp án và dựng bài Kiểm tra** — [TDD] — cỡ 1,5 giờ
-  - File: `logic/answers.js`, `logic/session.js` (`mulberry32`, `buildTest`), `tests/answers.test.js`, `tests/session.test.js`.
-  - Test viết trước: mục 3.6 (`To Reduce.` = `reduce`; `lead to / result in` nhận một trong hai; `chinh phu` = `chính phủ`; `dan den` = `dẫn đến`; gõ một trong hai nghĩa của `thậm chí, ngay cả`; `bumpCard` đúng/sai; `overrideRight` hoàn lại; `keyboardMismatch`) và mục 3.8 (`buildTest`).
-  - Xong khi: `npm test` xanh.
-
-- [ ] **2.8 Máy trạng thái phiên Học, Viết, Kiểm tra** — [TDD] — cỡ 2 giờ
-  - File: `logic/session.js`, `tests/session.test.js`.
-  - Test viết trước: Học với 2 bước: đúng `mcq` rồi đúng `write` mới tính xong; sai thì về bước đầu, gắn sao, gặp lại sau 2 câu; chỉ bật `write` thì 1 bước; mẻ nhỏ ưu tiên thẻ chưa đúng hôm nay; Viết: sai phải gõ lại, điểm tính lần đầu; Kiểm tra: `pct` = đúng / tổng, "Tôi đã gõ đúng" cộng lại điểm; tuần tự hoá rồi khôi phục giữa chừng cho cùng trạng thái; trắc nghiệm có đúng 1 đáp án đúng và các đáp án nhiễu không trùng nghĩa đáp án đúng.
-  - Xong khi: `npm test` xanh.
 
 - [ ] **2.9 Màn Hôm nay** — [UI] — cỡ 1,5 giờ
   - File: `v2/src/screens/Today.tsx` + CSS.
@@ -606,20 +630,18 @@ Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục
   - Hành vi: màn thiết lập: số câu ("Đủ bài: N thẻ × 2 chiều, tính lên mốc" hoặc số tuỳ chọn "luyện tập, không tính mốc"), trả lời bằng tiếng nào, loại câu cho từng chiều. Sai thì hiện đáp án + "Tôi đã gõ đúng" / "Tiếp", không tự nhảy. Kết quả: điểm, đạt hay chưa, mốc đổi thế nào, danh sách câu sai, streak.
   - Tiêu chí tay: deck 20 thẻ ra 40 câu; không thấy hai chiều của một từ gần nhau; rớt mạng giữa bài (DevTools offline) vẫn làm tiếp và kết quả tự gửi khi có mạng; đạt KPI thì deck lên mốc và biến khỏi danh sách chờ.
 
-- [ ] **2.12 Tiến độ từng học phần** — [TDD] + [UI] — cỡ 2 giờ
-  - File: `logic/mastery.js`, `tests/mastery.test.js`, `v2/src/screens/Decks.tsx`, `DeckDetail.tsx`.
-  - Test viết trước: mục 3.7; với file thật: `1608` thuộc cả hai chiều 100%, `stagesPassed` đã qua Mới, +1, +3, +7; `2208` 0% và chưa qua mốc nào.
+- [ ] **2.12b Tiến độ từng học phần: giao diện** — [UI] — cỡ 1,25 giờ (logic ở 2.12a)
+  - File: `v2/src/screens/Decks.tsx`, `DeckDetail.tsx`.
   - Hành vi: mỗi deck hiện % thuộc chiều Việt→Anh và chiều Anh→Việt (hai thanh riêng), Viết đã làm chưa và bao nhiêu %, Kiểm tra lần gần nhất và cao nhất, dải 5 mốc Mới/+1/+3/+7/+16 đánh dấu mốc đã qua, lần ôn kế. Màn chi tiết có danh sách thẻ kèm trạng thái từng chiều và sao.
   - Từ task này, phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`.
 
-- [ ] **2.13 Soạn deck** — [TDD] + [UI] — cỡ 1,5 giờ
-  - File: `logic/decks.js` (`parseCards`, `findDupTerms`), `tests/decks.test.js`, `v2/src/screens/DeckEditor.tsx`.
-  - Test viết trước: `từ: nghĩa` mỗi dòng một thẻ, tách ở dấu `:` đầu tiên, bỏ dòng trống, đếm dòng lỗi; `findDupTerms` so theo `norm`, bỏ qua chính deck đang sửa.
+- [ ] **2.13b Soạn deck: giao diện** — [UI] — cỡ 1 giờ (logic ở 2.13a)
+  - File: `v2/src/screens/DeckEditor.tsx`.
   - Hành vi: tạo, sửa, xoá mềm; dán danh sách; cảnh báo từ trùng deck khác (cho bỏ từ trùng hoặc giữ); gắn/gỡ sao. Không giới hạn số từ.
   - Có thể dời sang tuần sau: kho còn 4 deck mới.
 
-- [ ] **2.14 Streak: hiệu ứng và màn chúc mừng** — [TDD] + [UI] — cỡ 1,5 giờ
-  - File: `logic/streak.js` (`streakEvents`), `tests/streak.test.js`, `v2/src/components/Flame.tsx`, `Celebration.tsx`.
+- [ ] **2.14b Streak: hiệu ứng và màn chúc mừng** — [UI] — cỡ 1 giờ (logic ở 2.14a)
+  - File: `v2/src/components/Flame.tsx`, `Celebration.tsx`.
   - Hành vi: từ streak 3, mỗi lần số tăng thì ngọn lửa bùng lên; mốc 10, 50, 100, 200, 300… hiện màn chúc mừng lớn giữa màn hình; trạng thái "đang nguy" + nút "Dùng băng"; hiện băng đang có và còn bao nhiêu ngày tới băng kế.
   - Tiêu chí tay: dùng dữ liệu giả để xem đủ: tăng số, mốc 10, đang nguy, dùng băng; bật `prefers-reduced-motion` thì hiệu ứng rút gọn.
 
@@ -645,7 +667,7 @@ Chuẩn độ mượt (áp cho mọi task [UI]): bố cục co giãn liên tục
   - KHÔNG tắt project Supabase, KHÔNG xoá `keepalive.yml`.
   - Tiêu chí tay: `/vocab/` là Recall; bằng publishable key không đọc, không ghi được `vocab_sync`; workflow keepalive chạy tay ra xanh.
 
-Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13 → phần "deck đã xoá" và bản sao hằng tuần của 2.15 → chế độ Viết. Mốc tham khảo để dừng thêm tính năng và chỉ làm 2.17: 28/11.
+Khối lượng khoảng 29 giờ. Nếu trễ, cắt theo thứ tự: 2.13b (và 2.13a nếu chưa làm) → phần "deck đã xoá" và bản sao hằng tuần của 2.15 → chế độ Viết. Mốc tham khảo để dừng thêm tính năng và chỉ làm 2.17: 28/11.
 
 ---
 
