@@ -68,7 +68,7 @@ Mục tiêu số 1: Khang mở app MỖI NGÀY. Thước đo: giữ được str
 | Số từ mỗi deck | Không giới hạn, không cảnh báo. |
 | Backup | Một nút "Tải bản sao" khuất trong Cài đặt, không nhắc nhở. App tự lưu bản sao hằng tuần trên server. |
 | Dữ liệu thật | Không đưa lên repo public: file JSON nằm trong `.gitignore`; gỡ `SNAPSHOT` khỏi code v1 trước khi commit. |
-| Tên deck | (Khang 15/11) Deck xong Ngày 1 thì TỰ ĐỔI TÊN thành ngày học xong dạng `DDMM` (vd `1411`); ôn không đổi tên; mọi deck đều đổi; trùng thì thêm `b`, `c`… (mục 3.10). Chỉ áp dụng trong v2. |
+| Tên deck | (Khang 15/11) Deck xong Ngày 1 thì TỰ ĐỔI TÊN thành ngày học xong dạng `DDMM` (vd `1411`); ôn không đổi tên; mọi deck đều đổi; trùng thì thêm `b`, `c`… (mục 3.10). Chỉ áp dụng trong v2; KHÔNG vá v1. Deck xong Ngày 1 trên v1 từ 15/11 được đổi tên bù lúc chuyển dữ liệu sang v2 (2.6). |
 | ĐỀ XUẤT logic | Chưa áp dụng cái nào trong v2 (xem Phase 3). |
 
 Mâu thuẫn `RULES.md` §11 đã chốt: #1 giữ mốc sau khi gãy nhịp; #2 theo mục 3.2; #3 chỉ chấp nhận học 2 deck/ngày, không lên lịch cho nó; #4 học sớm thì hôm đó là Ngày 1; #5 phương án (c); #6 KPI là cài đặt; #7 tắt tiếng toàn cục, không theo dõi; #8 giữ trường `note`, không đổi định dạng nhập; #9 không có trường từ loại; #10 tên deck tự do cho tới khi xong Ngày 1, lúc đó app tự đổi tên thành ngày xong Ngày 1 (mục 3.10, Khang 15/11; thay cho "app hiện Ngày 1 thật"); #11 đăng nhập bằng tài khoản; #12 bỏ; #13 theo mục 3.4; #14 có khung thời gian + mục "Không làm".
@@ -429,7 +429,18 @@ Cách hiểu của người thực thi (Khang chưa nói rõ, xem mục 9):
 - "Ngày học xong" là **ngày học** theo mục 3.1: xong lúc 02:00 sáng 15/11 vẫn là `1411`.
 - Chỉ đổi MỘT lần, đúng lúc xong Ngày 1. Sau đó Khang sửa tên tay được, app không đổi lại. Deck đã qua Ngày 1 từ trước (`1608`…`2108`) không bị đổi hồi tố.
 - So trùng với MỌI deck khác chưa xoá, kể cả deck cũ trùng `DDMM` của năm trước (xong ngày 16/08/2027 khi còn deck `1608` → `1608b`).
-- v1 (đóng băng ở tag `v1-live-1`) KHÔNG có luật này; luật chạy trong v2 qua lệnh `sessionDone` (task 2.5).
+- v1 (đóng băng ở tag `v1-live-1`) KHÔNG có luật này và không được vá thêm; luật chạy trong v2 qua lệnh `sessionDone` (task 2.5).
+
+Khang duyệt 15/11: cả 4 cách hiểu trên, hết `z` thì `-27`, tên cũ không lưu lại.
+
+**Đổi tên bù lúc chuyển dữ liệu v1 → v2 (Khang 15/11).** Vì v1 không tự đổi tên, ở màn chuyển dữ liệu (task 2.6) deck nào đã xong Ngày 1 trên v1 **từ 15/11/2026 trở đi** thì đổi tên theo ngày xong Ngày 1 THẬT (`startedAt`, không phải ngày chuyển), đúng luật ở trên.
+- `DAY1_RENAME_FROM = '2026-11-15'`. `renameDay1OnImport(sets, fromDay = DAY1_RENAME_FROM)` → `{ sets, renamed: [{ id, from, to }] }`, thuần.
+- Đổi: deck có `startedAt >= fromDay` (dù sau đó đã lên các mốc ôn). Không đổi: deck không có `startedAt` (4 deck cũ `1608`…`2108`), deck xong Ngày 1 trước 15/11, deck kho, deck học dở.
+- Xử lý theo thứ tự (`startedAt`, rồi vị trí trong danh sách): hai deck xong cùng ngày thì deck đứng trước nhận `DDMM`, deck sau nhận `b`. So trùng với tên mọi deck khác trong bản nhập. Thứ tự deck giữ nguyên. Chạy lại lần hai không đổi thêm gì.
+- Màn chuyển dữ liệu gọi hàm này TRƯỚC `toV2` và hiện danh sách `renamed` trong phần tóm tắt trước khi ghi. `toV2`/`toV1` không đụng tên (`toV1(toV2(x))` vẫn bằng `x`).
+- Lưu ý: file "Tải bản sao" của v2 cũng ở dạng v1, nên nếu nhập lại file đó, deck Khang đã tự sửa tên sau khi xong Ngày 1 sẽ bị đổi về `DDMM`. Màn nhập hiện `renamed` nên thấy được trước khi ghi.
+
+Test thêm (`tests/decks.test.js`): tên theo `startedAt`; 14/11 giữ tên; deck cũ, kho, học dở giữ tên; cùng ngày → `b`, `c` theo vị trí; trùng tên deck đang có; chạy lại không đổi; chỉ đổi `name`, không sửa đầu vào.
 
 Test (`tests/decks.test.js`): `1411`, `0209`; trùng → `b`, `c`; lấy hậu tố trống đầu tiên; bỏ khoảng trắng, hoa thường; hết `z` → `-27`; deck kho Học xong → đổi; deck mới Kiểm tra đạt → đổi; học dở từ hôm trước xong hôm nay → tên theo hôm nay; học nửa deck, Kiểm tra trượt → không đổi; ôn đạt / trượt / lùi mốc → không đổi; deck tên sẵn `1411` vẫn `1411`; đầu vào không bị sửa.
 
@@ -611,7 +622,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
 
 - [ ] **2.6 Nối Supabase và màn chuyển dữ liệu lần đầu** — [UI] — cỡ 2 giờ
   - File: `v2/src/data/supabaseBackend.ts` (`load` = `select` hai bảng; `save` = `rpc('save_state')`, ánh xạ lỗi `REV_CONFLICT`), `v2/src/data/useStore.ts`, `v2/src/screens/Import.tsx`.
-  - Hành vi: tài khoản chưa có dữ liệu → màn chuyển dữ liệu. Nguồn 1: đọc thẳng `localStorage` `vocabvip.v1` (v1 và v2 cùng origin); nguồn 2: chọn file JSON. Hiện tóm tắt "N deck · N thẻ · N lượt trả lời · học gần nhất …" rồi mới ghi. Tài khoản đã có dữ liệu: so `compareFreshness`, cảnh báo nếu bản nhập cũ hơn, ghi `snapshots` trước khi thay.
+  - Hành vi: tài khoản chưa có dữ liệu → màn chuyển dữ liệu. Nguồn 1: đọc thẳng `localStorage` `vocabvip.v1` (v1 và v2 cùng origin); nguồn 2: chọn file JSON. Trước `toV2`, chạy `renameDay1OnImport` (mục 3.10): deck xong Ngày 1 trên v1 từ 15/11 đổi tên theo ngày xong Ngày 1 thật. Hiện tóm tắt "N deck · N thẻ · N lượt trả lời · học gần nhất …" kèm danh sách deck được đổi tên ("`2208` → `1511`") rồi mới ghi. Tài khoản đã có dữ liệu: so `compareFreshness`, cảnh báo nếu bản nhập cũ hơn, ghi `snapshots` trước khi thay.
   - Tiêu chí tay: nhập file thật → 8 deck, 175 thẻ, 713 lượt; tải lại trang và mở trên điện thoại thấy cùng dữ liệu; tắt mạng (DevTools offline) rồi phát một thay đổi → thấy trạng thái "đang chờ gửi", bật mạng → tự gửi.
   - Xong khi: tiêu chí đạt.
 
@@ -810,6 +821,7 @@ Thử thêm ngoài checklist:
 **Luật đổi tên deck (Khang 15/11)**
 - Đã thêm mục 3.10, `logic/decks.js` (`day1Name`, `renameOnDay1`), `tests/decks.test.js`. Phần nối vào app nằm ở lệnh `sessionDone` của task 2.5.
 - **Khang xem lại 5 chỗ người thực thi tự hiểu** (ghi ở mục 3.10): (1) ngày trong tên là ngày học, mốc 4h sáng; (2) chỉ đổi một lần, sau đó sửa tay được, deck cũ không đổi hồi tố; (3) trùng cả với deck cũ cùng `DDMM` năm trước; (4) hết `z` thì `-27`; (5) tên cũ không lưu lại, và v1 đang dùng hằng ngày KHÔNG tự đổi tên (deck xong Ngày 1 bằng v1 trong lúc chờ v2 vẫn giữ tên cũ). Muốn v1 cũng đổi tên thì phải vá `app.js` và ra tag `v1-live-2`: báo nếu cần.
+- **Khang trả lời (15/11):** duyệt (1)–(5). KHÔNG vá v1; thay vào đó đổi tên bù lúc chuyển dữ liệu v1 → v2 cho deck xong Ngày 1 trên v1 từ 15/11 trở đi (`renameDay1OnImport`, mục 3.10, nối vào màn ở task 2.6). Người thực thi tự chọn: hai deck xong cùng ngày thì deck đứng trước trong danh sách nhận tên không hậu tố (v1 không ghi giờ xong nên không biết deck nào xong trước).
 
 **Task 2.4 (15/11)**
 - `decks` của `toV2` là MẢNG các deck (đúng thứ tự `sets`), dùng lại chính các đối tượng deck, không sao chép sâu.

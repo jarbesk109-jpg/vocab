@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySessionResult, day1Name, renameOnDay1 } from '../logic/index.js';
+import { DAY1_RENAME_FROM, applySessionResult, day1Name, renameDay1OnImport, renameOnDay1 } from '../logic/index.js';
 import { mkCard, mkDeck, mkReviewDeck, mkStudiedDeck } from './fixtures/small.js';
 
 const T = '2026-11-14';
@@ -111,5 +111,71 @@ describe('renameOnDay1: chỉ đổi tên khi deck vừa xong Ngày 1 (mục 3.1
     const before = structuredClone(res);
     renameOnDay1(res, ['1411'], T);
     expect(res).toEqual(before);
+  });
+});
+
+describe('renameDay1OnImport: đổi tên deck xong Ngày 1 trên v1 từ 15/11 (mục 3.10)', () => {
+  /** Deck đã xong Ngày 1 trên v1 đã vá: có `startedAt`. */
+  const started = (name, day, over = {}) => mkStudiedDeck(name, day, { stageIdx: 1, anchor: day, startedAt: day, ...over });
+  const names = (r) => r.sets.map((s) => s.name);
+
+  it('DAY1_RENAME_FROM là 15/11/2026', () => {
+    expect(DAY1_RENAME_FROM).toBe('2026-11-15');
+  });
+  it('deck xong Ngày 1 ngày 15/11 và sau đó → tên theo ngày xong Ngày 1 THẬT (startedAt), không theo ngày nhập', () => {
+    const r = renameDay1OnImport([started('2208', '2026-11-15'), started('3108', '2026-11-18')]);
+    expect(names(r)).toEqual(['1511', '1811']);
+    expect(r.renamed).toEqual([
+      { id: 'id-2208', from: '2208', to: '1511' },
+      { id: 'id-3108', from: '3108', to: '1811' },
+    ]);
+  });
+  it('deck xong Ngày 1 trước 15/11 (kể cả 14/11) giữ tên', () => {
+    const r = renameDay1OnImport([started('2208', '2026-11-14'), started('x', '2026-11-13')]);
+    expect(names(r)).toEqual(['2208', 'x']);
+    expect(r.renamed).toEqual([]);
+  });
+  it('deck cũ không có startedAt, deck kho, deck học dở: giữ tên', () => {
+    const old = mkReviewDeck('1608', 4, '2026-11-20');
+    const half = mkDeck('dở', { cards: [mkCard('a', { prod: { r: 1, streak: 1, last: '2026-11-16' } }), mkCard('b')] });
+    const r = renameDay1OnImport([old, mkDeck('kho'), half]);
+    expect(names(r)).toEqual(['1608', 'kho', 'dở']);
+  });
+  it('deck đã lên các mốc ôn sau đó vẫn đổi theo ngày xong Ngày 1', () => {
+    const r = renameDay1OnImport([started('2208', '2026-11-15', { stageIdx: 3, lastCompleted: '2026-11-19' })]);
+    expect(names(r)).toEqual(['1511']);
+  });
+  it('hai deck xong Ngày 1 cùng ngày: deck đứng trước trong danh sách giữ tên gốc, deck sau thêm b', () => {
+    const r = renameDay1OnImport([started('x', '2026-11-16'), started('y', '2026-11-16'), started('z', '2026-11-16')]);
+    expect(names(r)).toEqual(['1611', '1611b', '1611c']);
+  });
+  it('xử lý theo thứ tự ngày xong Ngày 1, không theo vị trí; thứ tự deck trong mảng giữ nguyên', () => {
+    const r = renameDay1OnImport([started('muộn', '2026-11-17'), started('sớm', '2026-11-15')]);
+    expect(names(r)).toEqual(['1711', '1511']);
+    expect(r.renamed.map((x) => x.to)).toEqual(['1511', '1711']);
+  });
+  it('trùng với tên deck khác đang có → thêm hậu tố; tên của chính deck không tính', () => {
+    const r = renameDay1OnImport([mkDeck('1511'), started('x', '2026-11-15'), started('1611', '2026-11-16')]);
+    expect(names(r)).toEqual(['1511', '1511b', '1611']);
+    expect(r.renamed).toEqual([{ id: 'id-x', from: 'x', to: '1511b' }]);
+  });
+  it('chạy lại lần hai cho cùng kết quả, không đổi thêm gì', () => {
+    const first = renameDay1OnImport([started('x', '2026-11-16'), started('y', '2026-11-16'), mkDeck('1611c')]);
+    expect(names(first)).toEqual(['1611', '1611b', '1611c']);
+    const second = renameDay1OnImport(first.sets);
+    expect(second.sets).toEqual(first.sets);
+    expect(second.renamed).toEqual([]);
+  });
+  it('chỉ đổi trường name; không sửa đầu vào; deck không đổi là chính đối tượng cũ', () => {
+    const sets = [started('x', '2026-11-15'), mkDeck('kho')];
+    const before = structuredClone(sets);
+    const r = renameDay1OnImport(sets);
+    expect(sets).toEqual(before);
+    expect(r.sets[0]).toEqual({ ...before[0], name: '1511' });
+    expect(r.sets[1]).toBe(sets[1]);
+  });
+  it('mốc ngày truyền vào được; startedAt hỏng thì bỏ qua', () => {
+    expect(names(renameDay1OnImport([started('x', '2026-11-14')], '2026-11-14'))).toEqual(['1411']);
+    expect(names(renameDay1OnImport([mkDeck('x', { startedAt: 'abc' }), mkDeck('y', { startedAt: null })]))).toEqual(['x', 'y']);
   });
 });

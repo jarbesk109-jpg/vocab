@@ -34,3 +34,34 @@ export function renameOnDay1(result, otherNames, today) {
   if (!result.advanced || result.stageFrom !== 0) return result.set;
   return { ...result.set, name: day1Name(today, otherNames) };
 }
+
+/** Deck xong Ngày 1 trên v1 từ ngày này trở đi thì được đổi tên lúc chuyển dữ liệu sang v2 (Khang 15/11). */
+export const DAY1_RENAME_FROM = '2026-11-15';
+
+/**
+ * Lúc chuyển dữ liệu v1 → v2: v1 không tự đổi tên, nên deck nào xong Ngày 1 trên v1
+ * (`startedAt`) từ `fromDay` trở đi thì đổi tên theo ngày xong Ngày 1 THẬT, đúng luật `day1Name`.
+ * Xử lý theo thứ tự (`startedAt`, vị trí trong mảng); thứ tự mảng giữ nguyên. Chạy lại cho cùng kết quả.
+ * Không sửa đầu vào; deck không đổi tên là chính đối tượng cũ.
+ * @param {any[]} sets các deck dạng v1
+ * @param {string} [fromDay]
+ * @returns {{ sets: any[], renamed: { id: string, from: string, to: string }[] }}
+ */
+export function renameDay1OnImport(sets, fromDay = DAY1_RENAME_FROM) {
+  const out = [...sets];
+  const renamed = [];
+  const isDay = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const todo = out
+    .map((s, i) => i)
+    .filter((i) => isDay(out[i].startedAt) && out[i].startedAt >= fromDay)
+    .sort((a, b) => (out[a].startedAt < out[b].startedAt ? -1 : out[a].startedAt > out[b].startedAt ? 1 : a - b));
+  for (const i of todo) {
+    const set = out[i];
+    const others = out.filter((_, j) => j !== i).map((s) => s.name);
+    const name = day1Name(set.startedAt, others);
+    if (name === set.name) continue;
+    out[i] = { ...set, name };
+    renamed.push({ id: set.id, from: set.name, to: name });
+  }
+  return { sets: out, renamed };
+}
