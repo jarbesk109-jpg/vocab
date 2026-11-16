@@ -68,4 +68,23 @@ export const supabaseBackend = {
     const { error } = await supabase.from('snapshots').insert({ reason, data });
     if (error) throw error;
   },
+
+  /** Thời điểm của bản sao gần nhất (mọi lý do), hoặc null nếu chưa có bản nào. */
+  async latestSnapshotAt(): Promise<string | null> {
+    const uid = await userId();
+    const { data, error } = await supabase.from('snapshots').select('created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1);
+    if (error) throw error;
+    return data && data.length ? (data[0].created_at as string) : null;
+  },
+
+  /** Xoá các bản sao HẰNG TUẦN cũ, chỉ giữ `keep` bản gần nhất. Bản sao trước khi nhập / xoá sạch không bị đụng. */
+  async pruneWeeklySnapshots(keep: number): Promise<void> {
+    const uid = await userId();
+    const { data, error } = await supabase.from('snapshots').select('id').eq('user_id', uid).eq('reason', 'weekly').order('id', { ascending: false }).range(keep, keep + 99);
+    if (error) throw error;
+    const ids = (data || []).map((r) => r.id);
+    if (!ids.length) return;
+    const del = await supabase.from('snapshots').delete().eq('user_id', uid).in('id', ids);
+    if (del.error) throw del.error;
+  },
 };

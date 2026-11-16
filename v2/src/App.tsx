@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { computeStreak, streakEvents, studyDay, summarize, toV1 } from '../../logic/index.js';
-import { authErrorText, useSession } from './auth';
+import { computeStreak, streakEvents, studyDay } from '../../logic/index.js';
+import { useSession } from './auth';
 import { Celebration } from './components/Celebration';
 import { FlameToast } from './components/Flame';
-import { useStore, type StoreState, type StoreStatus } from './data/useStore';
+import { useStore, type StoreStatus } from './data/useStore';
 import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
 import { DeckDetail } from './screens/DeckDetail';
 import { DeckEditor } from './screens/DeckEditor';
@@ -11,9 +11,9 @@ import { Decks } from './screens/Decks';
 import { Import } from './screens/Import';
 import { Learn } from './screens/Learn';
 import { Login } from './screens/Login';
+import { Settings, syncText } from './screens/Settings';
 import { Today } from './screens/Today';
-import { supabase } from './supabase';
-import { useTheme, type ThemeChoice } from './theme';
+import { useTheme } from './theme';
 
 const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   {
@@ -91,54 +91,6 @@ function Empty({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-const THEMES: { value: ThemeChoice; label: string }[] = [
-  { value: 'light', label: 'Sáng' },
-  { value: 'dark', label: 'Tối' },
-  { value: 'system', label: 'Theo máy' },
-];
-
-function Account({ email }: { email: string }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function signOut() {
-    setBusy(true);
-    setError(null);
-    // Thành công: useSession nhận phiên rỗng và App tự về màn đăng nhập.
-    const { error } = await supabase.auth.signOut().catch(() => ({ error: { message: 'failed to fetch' } }));
-    if (error) {
-      setError(authErrorText(error).replace('Không đăng nhập được', 'Không đăng xuất được'));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="card account">
-      <div className="field">
-        <span className="field-label">Tài khoản</span>
-        <span className="account-email">{email}</span>
-      </div>
-      {error && (
-        <p className="alert" role="alert">
-          {error}
-        </p>
-      )}
-      <button className="btn" type="button" onClick={signOut} disabled={busy}>
-        {busy ? 'Đang đăng xuất…' : 'Đăng xuất'}
-      </button>
-    </div>
-  );
-}
-
-/** Trạng thái gửi dữ liệu, bằng chữ. `null` = mọi thứ đã lưu trên máy chủ. */
-function syncText(status: StoreStatus, online: boolean): { text: string; bad: boolean } | null {
-  if (status.error === 'conflict') return { text: 'Chưa gửi được: dữ liệu trên máy chủ đang đổi liên tục. Tải lại trang.', bad: true };
-  if (status.pending === 0) return null;
-  if (!online) return { text: `Mất mạng · ${status.pending} thay đổi đang chờ gửi`, bad: false };
-  if (status.error === 'network') return { text: `Chưa gửi được · ${status.pending} thay đổi đang chờ gửi`, bad: false };
-  return { text: 'Đang gửi…', bad: false };
-}
-
 /** Nhãn nổi ở góc màn: chỉ hiện khi còn thay đổi chưa lên máy chủ. Không chiếm chỗ nên không xê dịch bố cục. */
 function SyncPill({ status, online }: { status: StoreStatus; online: boolean }) {
   const s = syncText(status, online);
@@ -146,98 +98,6 @@ function SyncPill({ status, online }: { status: StoreStatus; online: boolean }) 
     <div className="sync-pill" role="status" aria-live="polite" data-show={s ? '' : undefined} data-bad={s?.bad ? '' : undefined}>
       {s?.text}
     </div>
-  );
-}
-
-/** '2026-10-10' → '10/10/2026'. */
-function formatDay(day: string): string {
-  const [y, m, d] = day.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function Kpi({ value, onChange }: { value: number; onChange: (kpi: number) => void }) {
-  const [draft, setDraft] = useState(String(value));
-  // Giá trị đổi từ máy khác (hoặc sau khi gửi) thì ô nhập theo.
-  useEffect(() => setDraft(String(value)), [value]);
-
-  function commit() {
-    const n = Math.round(Number(draft));
-    if (!draft.trim() || !Number.isFinite(n)) return setDraft(String(value));
-    const kpi = Math.min(100, Math.max(50, n));
-    setDraft(String(kpi));
-    if (kpi !== value) onChange(kpi);
-  }
-
-  return (
-    <label className="field kpi">
-      <span className="field-label">KPI bài Kiểm tra (%)</span>
-      <input
-        className="input"
-        type="number"
-        inputMode="numeric"
-        min={50}
-        max={100}
-        step={1}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-      />
-      <span className="muted">Bài Kiểm tra đạt từ mức này trở lên thì học phần lên mốc.</span>
-    </label>
-  );
-}
-
-type SettingsProps = {
-  email: string;
-  state: StoreState;
-  status: StoreStatus;
-  online: boolean;
-  send: (cmd: Record<string, unknown>) => unknown;
-};
-
-function Settings({ email, state, status, online, send }: SettingsProps) {
-  const [theme, setTheme] = useTheme();
-  const sum = summarize(toV1(state.meta, state.decks));
-  const sync = syncText(status, online);
-  return (
-    <>
-    {!status.empty && (
-      <div className="card data-card">
-        <Kpi value={state.meta.settings?.kpi ?? 90} onChange={(kpi) => send({ type: 'settings', patch: { kpi } })} />
-      </div>
-    )}
-    <div className="card data-card">
-      <div className="field">
-        <span className="field-label">Dữ liệu</span>
-        <span className="muted">
-          {status.empty
-            ? 'Tài khoản chưa có dữ liệu.'
-            : `${sum.sets} học phần · ${sum.cards} thẻ · ${sum.answers} lượt trả lời · ${sum.last ? 'học gần nhất ' + formatDay(sum.last) : 'chưa học lần nào'}`}
-        </span>
-        <span className={sync?.bad ? 'sync-line bad' : 'sync-line'}>{sync ? sync.text : 'Đã lưu trên máy chủ.'}</span>
-      </div>
-      <a className="btn" href={hrefOf('import')}>
-        Chuyển dữ liệu từ bản cũ
-      </a>
-    </div>
-    <div className="card">
-      <fieldset className="field">
-        <legend className="field-label">Giao diện</legend>
-        <div className="segmented">
-          {THEMES.map((t) => (
-            <label key={t.value}>
-              <input type="radio" name="theme" value={t.value} checked={theme === t.value} onChange={() => setTheme(t.value)} />
-              {t.label}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-    </div>
-    <Account email={email} />
-    </>
   );
 }
 

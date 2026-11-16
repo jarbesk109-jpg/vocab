@@ -1646,6 +1646,50 @@ kbd {
   gap: var(--space-2);
 }
 
+/* ---------- Cài đặt: cảnh báo đăng xuất, Nâng cao ---------- */
+
+.account-warn {
+  display: grid;
+  gap: var(--space-3);
+}
+.account-warn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.advanced-body {
+  display: grid;
+  gap: var(--space-5);
+  padding-block: var(--space-4);
+}
+.advanced-body .field-label {
+  margin-bottom: 0;
+}
+.advanced-body .btn {
+  justify-self: start;
+}
+.deleted-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.deleted-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+.deleted-list li + li {
+  border-top: 1px solid var(--line);
+}
+.deleted-name {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

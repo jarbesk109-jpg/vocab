@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CACHE_KEY, OUTBOX_KEY, createStore, studyDay } from '../../../logic/index.js';
 import { supabaseBackend } from './supabaseBackend';
+import { weeklySnapshot } from './weeklySnapshot';
 
 export type Store = ReturnType<typeof createStore>;
 export type StoreState = ReturnType<Store['getState']>;
@@ -75,7 +76,12 @@ export function useStore(userId: string) {
       // Không tải được: còn bản lưu trên máy thì vẫn dùng (đang chờ mạng); không có thì báo lỗi,
       // KHÔNG coi là tài khoản trống.
       setBoot(res.ok || !store.getStatus().empty ? 'ready' : 'error');
-      if (res.ok) void store.flush();
+      if (res.ok) {
+        // gửi nốt lệnh đang chờ rồi mới xét bản sao hằng tuần (bản sao lấy dữ liệu mới nhất)
+        void Promise.resolve(store.flush()).then(() => {
+          if (alive) void weeklySnapshot(store);
+        });
+      }
     });
     return () => {
       alive = false;

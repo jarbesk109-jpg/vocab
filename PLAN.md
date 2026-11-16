@@ -656,7 +656,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: từ streak 3, mỗi lần số tăng thì ngọn lửa bùng lên; mốc 10, 50, 100, 200, 300… hiện màn chúc mừng lớn giữa màn hình; trạng thái "đang nguy" + nút "Dùng băng"; hiện băng đang có và còn bao nhiêu ngày tới băng kế.
   - Tiêu chí tay: dùng dữ liệu giả để xem đủ: tăng số, mốc 10, đang nguy, dùng băng; bật `prefers-reduced-motion` thì hiệu ứng rút gọn.
 
-- [ ] **2.15 Cài đặt và bản sao** — [UI] — cỡ 1,5 giờ
+- [x] **2.15 Cài đặt và bản sao** — [UI] — cỡ 1,5 giờ
   - File: `v2/src/screens/Settings.tsx`.
   - Hành vi: KPI; tắt tiếng; tài khoản + Đăng xuất (outbox còn lệnh thì cảnh báo); mục "Nâng cao" gập sẵn chứa nút **Tải bản sao** (JSON dạng v1, tên `recall-backup-YYYY-MM-DD.json`) và danh sách deck đã xoá để khôi phục. Mở app mà bản `snapshots` gần nhất đã quá 7 ngày thì lặng lẽ ghi bản mới (`reason 'weekly'`), giữ 8 bản gần nhất. Không có bất kỳ lời nhắc backup nào.
   - Tiêu chí tay: file tải về nhập lại được và bằng dữ liệu đang có.
@@ -1076,6 +1076,29 @@ Thử thêm ngoài checklist:
   - Trường hợp 2.14a đã ghi (dùng băng đúng ngày chạm bội số 21: mất 1 nhận 1) không báo "nhận băng": giữ nguyên.
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả và dữ liệu streak giả, 36/36 mục đạt: 2 → 3 lửa bùng; 1 → 2 không có gì; tải lại trang không bùng lại; 9 → 10 màn chúc mừng (giữa màn hình, focus ở nút, Enter đóng, không bị màn kết quả cướp focus, 320×568 nằm trọn); 20 → 21 lửa bùng + nhận băng, Hôm nay ghi đang giữ 1 băng; đang nguy có băng → nút "Dùng băng" → máy chủ ghi `freezeUsedDays`, cần 1 lượt, học 1 lượt → 22 và hết băng; đang nguy không băng → không có nút, 1 lượt chưa cứu, lượt thứ 2 cứu được và lửa bùng; `#/fx` chạy đủ 4 hiệu ứng, không ghi dữ liệu; `prefers-reduced-motion` thì hiệu ứng rút gọn mà vẫn nhìn thấy; console không lỗi. Chạy lại bài thử 2.10 (70/70), 2.11 (44/44), 2.12b (65/65), 2.13b (31/31).
 - Chưa thử được: nhìn hiệu ứng bằng mắt người (đẹp hay chưa, nhanh chậm ra sao), điện thoại thật. Khang mở `/vocab/v2/#/fx` để xem.
+- **Khang duyệt (17/11)** các chỗ tự quyết ở 2.13b và 2.14b; giữ màn `#/fx`. Sửa một điểm của 2.13b: đang soạn deck mà còn thay đổi chưa lưu thì chuyển màn trong app phải hỏi lại trước khi bỏ.
+
+**Sửa 2.13b theo Khang (17/11): hỏi lại khi rời màn soạn dở**
+- `v2/src/router.ts` thêm `setLeaveGuard(lời hỏi | null)`; `DeckEditor.tsx` bật khi có thay đổi chưa lưu, tắt khi đã lưu / đã xoá / rời màn.
+- Bấm bất kỳ đường dẫn nào trong app (thanh điều hướng, "← Chi tiết học phần"…) hoặc nút Back / Forward của trình duyệt: hiện hộp hỏi của trình duyệt "Học phần đang soạn còn thay đổi chưa lưu. Rời màn này thì các thay đổi đó bị bỏ. Vẫn rời?". Không đồng ý thì ở lại, phần đang soạn còn nguyên. Màn soạn chưa đổi gì thì không hỏi. Đóng tab / tải lại vẫn do trình duyệt hỏi như trước.
+- Người thực thi tự quyết: dùng hộp hỏi có sẵn của trình duyệt (`confirm`), không vẽ hộp riêng. Khi từ chối rời bằng nút Back, app đặt lại địa chỉ màn soạn (lịch sử trình duyệt có thêm một mục).
+
+**Task 2.15 (17/11): Cài đặt và bản sao**
+- File mới: `v2/src/screens/Settings.tsx` (chuyển phần Cài đặt từ `App.tsx` sang và làm đủ), `v2/src/data/weeklySnapshot.ts`. Sửa `v2/src/data/supabaseBackend.ts` (thêm `latestSnapshotAt`, `pruneWeeklySnapshots`), `v2/src/data/useStore.ts`, `v2/src/App.tsx`, `v2/src/styles/base.css`.
+- Màn Cài đặt từ trên xuống: KPI; Âm thanh ("Tắt tiếng đọc từ", cùng công tắc với nút loa ở màn học, nhớ theo máy); Giao diện; Dữ liệu (dòng tóm tắt, trạng thái gửi, "Chuyển dữ liệu từ bản cũ"); Tài khoản + Đăng xuất; mục **Nâng cao** gập sẵn gồm "Tải bản sao" và "Học phần đã xoá".
+- Đăng xuất khi hàng chờ còn lệnh: hiện cảnh báo "Còn N thay đổi chưa gửi lên máy chủ…" với hai nút "Ở lại" / "Vẫn đăng xuất". Hàng chờ rỗng thì đăng xuất ngay.
+- Tải bản sao: file `recall-backup-YYYY-MM-DD.json` (ngày học hôm nay), nội dung là `toV1(meta, decks)`, nhập lại được ở màn Chuyển dữ liệu.
+- Học phần đã xoá: liệt kê tên + số thẻ, nút "Khôi phục" phát `deckUpsert` chỉ với id (luật 2.5: id của deck đã xoá = khôi phục, nội dung và tiến độ y nguyên).
+- Bản sao hằng tuần: mỗi lần mở app, sau khi tải được bản server và gửi hết lệnh chờ, hỏi máy chủ thời điểm của bản `snapshots` gần nhất; chưa có bản nào hoặc đã quá 7 ngày thì ghi một bản `reason 'weekly'` rồi dọn. Không hiện gì trên màn; lỗi thì bỏ qua, lần mở sau thử lại. Không có lời nhắc backup nào.
+- Người thực thi tự quyết (Khang xem lại):
+  - "Giữ 8 bản gần nhất" áp cho các bản `weekly`: chỉ xoá bản `weekly` cũ, KHÔNG xoá bản `before-import` / `before-reset` (đó là bản sao an toàn trước thao tác thay thế, xoá đi thì mất đường lùi). "Bản gần nhất đã quá 7 ngày" thì tính mọi loại bản sao.
+  - File tải về KHÔNG chứa học phần đã xoá (dạng v1 không có khái niệm xoá mềm). Hệ quả: nhập lại file này thì các deck đã xoá vẫn nằm trong "Học phần đã xoá" (không mất), các deck đang có giữ nguyên.
+  - Mục Nâng cao chỉ hiện khi tài khoản đã có dữ liệu.
+  - "Chuyển dữ liệu từ bản cũ" vẫn nằm ở thẻ Dữ liệu (đã duyệt ở 2.6), không dời vào Nâng cao.
+  - Cảnh báo đăng xuất nói rõ điều sẽ xảy ra: thay đổi nằm lại trên máy, đăng nhập lại đúng tài khoản thì gửi tiếp, tài khoản khác đăng nhập trên máy đó thì bị bỏ (đúng cách `recall.owner` đang chạy từ 2.6).
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, 40/40 mục đạt. Hỏi lại khi rời màn soạn: bấm đường dẫn, "← Chi tiết học phần", nút Back đều hỏi; từ chối thì ở lại và phần đang soạn còn nguyên; đồng ý thì rời và không ghi gì; chưa sửa gì hoặc đã lưu thì không hỏi. Cài đặt: Nâng cao gập sẵn; tắt tiếng ở Cài đặt thì màn học cũng tắt; tải bản sao ra đúng tên file, nội dung bằng `toV1` của dữ liệu đang có; **nhập lại chính file đó thì mọi deck trên máy chủ bằng từng byte với trước khi nhập**, meta (cài đặt, hoạt động, thứ tự deck, băng) giữ nguyên; xoá deck → hiện ở "Học phần đã xoá" → Khôi phục → nội dung và tiến độ y nguyên; bản sao gần nhất chưa quá 7 ngày thì không ghi, đã 8 ngày thì ghi đúng 1 bản `weekly`, mở lại không ghi thêm, đang có 9 bản `weekly` thì còn 8 và bản `before-import` không bị dọn; đăng xuất khi còn 1 thay đổi chờ gửi thì cảnh báo, "Ở lại" giữ nguyên, hết chờ thì đăng xuất ngay; 360px không tràn ngang; console không lỗi. Chạy lại bài thử 2.10 (70/70), 2.11 (45/45), 2.12b (65/65), 2.13b (31/31), 2.14b (36/36).
+- Chưa thử được: Supabase thật (đọc và xoá dòng `snapshots` thật), điện thoại thật.
+- Lưu ý khi dùng trang thật: bản sao hằng tuần sẽ tự ghi vào bảng `snapshots` thật lần đầu mở app sau khi bản sao gần nhất quá 7 ngày (bản `before-import` của Khang ghi ngày 15/11, nên sớm nhất là 22/11).
 
 ---
 
