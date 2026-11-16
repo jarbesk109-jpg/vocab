@@ -1106,6 +1106,7 @@ Thử thêm ngoài checklist:
 - Nguyên nhân có khả năng nhất: repo → Settings → Pages → Source đang là "Deploy from a branch" thay vì "GitHub Actions" (việc của Khang ở task 2.2). Người thực thi không xem được và không đổi được cài đặt này.
 - **Việc của Khang:** repo → Settings → Pages → Build and deployment → Source: chọn **GitHub Actions**. Sau đó luồng kiểu cũ không chạy nữa. Rồi chạy lại workflow `deploy` (Actions → deploy → Run workflow), hoặc bảo người thực thi push một commit.
 - Việc người thực thi đã làm: ghi mục này và push (một lần push nữa để hai luồng chạy lại; không sửa workflow, không force). Kết quả ghi ở dòng dưới.
+- Kết quả lần push ghi chú (`a99ff29..3de0832`): lần này workflow `deploy` về sau 14 giây. Trang thật đã đúng trở lại: `/vocab/v2/` phục vụ bản build khớp bản build ở máy (có 2.15), `/vocab/PLAN.md` 404. Dòng này được commit ở máy nhưng CỐ Ý CHƯA push, vì mỗi lần push là một lần chạy đua nữa; nó sẽ đi cùng lần push kế tiếp. Chừng nào Khang chưa đổi Source thì mọi lần push sau đều có thể làm trang trắng lại.
 
 ---
 
