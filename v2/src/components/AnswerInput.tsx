@@ -54,10 +54,43 @@ export function AnswerInput({ inputRef, dir, value, onChange, onSubmit, locked, 
 type ChoiceProps = {
   options: string[];
   onPick: (i: number) => void;
-  /** Đã trả lời: khoá các nút, tô lựa chọn đúng và lựa chọn đã bấm. */
+  /** Đã trả lời: khoá các nút, tô lựa chọn đúng và lựa chọn đã bấm (-1: không rõ đã bấm gì). */
   picked?: number;
   correct?: number;
 };
+
+type TrueFalseProps = {
+  /** Đáp án được đưa ra để người học phán đúng hay sai. */
+  shown: string;
+  onPick: (v: boolean) => void;
+  /** Đã trả lời: `answered` khoá nút; `picked` là lựa chọn đã bấm (nếu biết), `truth` là đáp án đúng. */
+  answered: boolean;
+  picked?: boolean;
+  truth?: boolean;
+};
+
+/** Câu Đúng / Sai: phím 1 = Đúng, 2 = Sai. */
+export function TrueFalse({ shown, onPick, answered, picked, truth }: TrueFalseProps) {
+  const stateOf = (v: boolean) => (answered ? (v === truth ? 'ok' : v === picked ? 'bad' : undefined) : undefined);
+  return (
+    <div className="tf">
+      <p className="tf-shown">
+        <span className="muted">Đáp án này đúng hay sai?</span>
+        <strong>{shown}</strong>
+      </p>
+      <ol className="options tf-options">
+        {[true, false].map((v, i) => (
+          <li key={i}>
+            <button className="option" type="button" disabled={answered} data-state={stateOf(v)} onClick={() => onPick(v)}>
+              <kbd aria-hidden="true">{i + 1}</kbd>
+              <span>{v ? 'Đúng' : 'Sai'}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 /** Các lựa chọn trắc nghiệm, đánh số 1–4 theo phím tắt. */
 export function ChoiceList({ options, onPick, picked, correct }: ChoiceProps) {

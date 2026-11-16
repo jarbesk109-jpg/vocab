@@ -497,12 +497,20 @@ textarea {
   margin: 0;
   padding-block: var(--space-2);
 }
-.deck-list li {
+.deck-row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-3);
-  padding-block: var(--space-3);
+  min-height: 3.25rem;
+  padding-block: var(--space-2);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.deck-row .deck-name {
+  flex: 1;
+}
+.deck-row:hover .today-row-go {
+  text-decoration: underline;
 }
 .deck-list li + li {
   border-top: 1px solid var(--line);
@@ -1102,6 +1110,76 @@ kbd {
 .result-actions {
   display: grid;
   gap: var(--space-2);
+}
+
+/* ---------- Kiểm tra: thiết lập, câu Đúng / Sai, kết quả ---------- */
+
+.setup-radios {
+  display: grid;
+}
+.setup-types {
+  width: min(100%, 30rem);
+}
+.setup-types label {
+  padding: var(--space-1);
+  line-height: 1.2;
+}
+.setup-count .input {
+  width: 8rem;
+}
+
+.tf {
+  display: grid;
+  gap: var(--space-3);
+}
+.tf-shown {
+  display: grid;
+  gap: 0.125rem;
+  padding-inline: var(--space-1);
+  overflow-wrap: anywhere;
+}
+.tf-shown strong {
+  font-size: var(--text-lg);
+}
+.tf-options {
+  grid-template-columns: 1fr 1fr;
+}
+
+.result-verdict {
+  align-self: center;
+  font-size: var(--text-sm);
+}
+.result-line-ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+.result-line-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+.result-wrong {
+  display: grid;
+  gap: var(--space-2);
+}
+.result-wrong ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.result-wrong li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+.result-wrong li + li {
+  border-top: 1px solid var(--line);
+}
+.result-wrong-pair {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (prefers-reduced-motion: reduce) {

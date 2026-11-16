@@ -7,31 +7,34 @@ import {
   sessionQuestion,
   sessionSummary,
   startLearn,
+  startTest,
   startWrite,
 } from '../../../logic/index.js';
 import { setMuted, speak, stopSpeaking, useMuted } from '../audio';
-import { AnswerInput, ChoiceList } from '../components/AnswerInput';
+import { AnswerInput, ChoiceList, TrueFalse } from '../components/AnswerInput';
 import { ProgressBar } from '../components/ProgressBar';
 import { QuestionCard } from '../components/QuestionCard';
 import type { Store, StoreState } from '../data/useStore';
 import { hrefOf } from '../router';
-import { SESSION_KEY, leftToday } from './Today';
+import { Result, type Finished } from './Result';
+import { TestSetup, practiceCount, readTestPrefs, writeTestPrefs, type TestPrefs } from './TestSetup';
+import { SESSION_KEY } from './Today';
 
-type Mode = 'learn' | 'write';
+type Mode = 'learn' | 'write' | 'test';
 type Dir = 'prod' | 'recog';
 
 /** Phiên dang dở, lưu theo máy để "Học tiếp". `recording` chốt lúc BẮT ĐẦU phiên (mất mạng thì cả phiên không ghi). */
-type Saved = { deckId: string; mode: Mode; state: any; recording: boolean; startName: string; wasNew: boolean };
+type Saved = Omit<Finished, 'summary'> & { deckId: string; state: any };
 
-type Prefs = { mode: Mode; dir: Dir; mcq: boolean; write: boolean; batch: number };
+type Prefs = { dir: Dir; mcq: boolean; write: boolean; batch: number };
 const PREFS_KEY = 'recall.learn.prefs.v1';
-const DEFAULT_PREFS: Prefs = { mode: 'learn', dir: 'prod', mcq: true, write: true, batch: 0 };
+const DEFAULT_PREFS: Prefs = { dir: 'prod', mcq: true, write: true, batch: 0 };
 const BATCHES = [7, 15, 20, 30];
 
 function readSaved(deckId: string): Saved | null {
   try {
     const v = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-    const ok = v && v.deckId === deckId && (v.mode === 'learn' || v.mode === 'write') && v.state && !v.state.done;
+    const ok = v && v.deckId === deckId && (v.mode === 'learn' || v.mode === 'write' || v.mode === 'test') && v.state && !v.state.done;
     return ok ? v : null;
   } catch {
     return null;
@@ -51,7 +54,6 @@ function readPrefs(): Prefs {
   try {
     const v = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null') || {};
     return {
-      mode: v.mode === 'write' ? 'write' : 'learn',
       dir: v.dir === 'recog' ? 'recog' : 'prod',
       mcq: v.mcq !== false,
       write: v.write !== false,
@@ -72,11 +74,11 @@ function writePrefs(p: Prefs): void {
 
 type Props = { deckId: string; state: StoreState; store: Store; today: string };
 
-/** Màn Học và Viết (task 2.10): thiết lập → phiên → kết quả, tất cả trong `#/study/<id>`. */
+/** Màn Học, Viết và Kiểm tra (task 2.10, 2.11): thiết lập → phiên → kết quả, tất cả trong `#/study/<id>`. */
 export function Learn({ deckId, state, store, today }: Props) {
   const deck: any = state.decks.find((d: any) => d.id === deckId);
   const [saved, setSavedState] = useState<Saved | null>(() => readSaved(deckId));
-  const [result, setResult] = useState<(Saved & { summary: any }) | null>(null);
+  const [result, setResult] = useState<Finished | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const setSaved = (s: Saved | null) => {
@@ -100,6 +102,7 @@ export function Learn({ deckId, state, store, today }: Props) {
     return (
       <Result
         deck={deck}
+        state={state}
         today={today}
         result={result}
         onAgain={() => {
@@ -146,21 +149,26 @@ export function Learn({ deckId, state, store, today }: Props) {
       deck={deck}
       today={today}
       notice={notice}
-      onStart={(p) => {
+      onStart={(mode, p, tp) => {
         const seed = Date.now() >>> 0;
         const st =
-          p.mode === 'learn'
+          mode === 'learn'
             ? startLearn(cards, { deckId, dir: p.dir, mcq: p.mcq, write: p.write, batch: p.batch }, today, seed)
-            : startWrite(cards, { deckId, dir: p.dir }, seed);
+            : mode === 'write'
+              ? startWrite(cards, { deckId, dir: p.dir }, seed)
+              : startTest(cards, { deckId, full: tp.full, count: practiceCount(tp, cards.length), answerIn: tp.answerIn, typeProd: tp.typeProd, typeRecog: tp.typeRecog }, seed);
         const status: any = deckStatus(deck, today);
         setNotice(null);
         setSaved({
           deckId,
-          mode: p.mode,
+          mode,
           state: st,
           recording: store.startSession().recording,
           startName: deck.name,
           wasNew: status.kind === 'stock' || status.stage === 0,
+          stageFrom: deck.stageIdx || 0,
+          doneBefore: deck.lastCompleted ?? null,
+          kindAt: status.kind,
         });
       }}
     />
@@ -169,12 +177,22 @@ export function Learn({ deckId, state, store, today }: Props) {
 
 /* ---------- Thiết lập ---------- */
 
-function Setup({ deck, today, notice, onStart }: { deck: any; today: string; notice: string | null; onStart: (p: Prefs) => void }) {
+type SetupProps = { deck: any; today: string; notice: string | null; onStart: (mode: Mode, p: Prefs, tp: TestPrefs) => void };
+
+function Setup({ deck, today, notice, onStart }: SetupProps) {
   const [prefs, setPrefs] = useState<Prefs>(readPrefs);
+  const [test, setTestState] = useState<TestPrefs>(readTestPrefs);
   const n = (deck.cards || []).length;
   const sizes = BATCHES.filter((b) => b < n);
   const status: any = deckStatus(deck, today);
-  const reviewing = status.kind !== 'stock' && status.stage >= 1;
+  // Deck đã qua Ngày 1 (đang ôn, đã hẹn ngày, đã xong vòng) mặc định Kiểm tra; deck mới mặc định Học. Lúc nào cũng đổi được.
+  const reviewing = status.kind !== 'stock' && !(status.kind === 'waiting' && status.stage === 0);
+  const [mode, setMode] = useState<Mode>(reviewing ? 'test' : 'learn');
+  const setTest = (patch: Partial<TestPrefs>) => {
+    const next = { ...test, ...patch };
+    setTestState(next);
+    writeTestPrefs(next);
+  };
 
   const set = (patch: Partial<Prefs>) => {
     const next = { ...prefs, ...patch };
@@ -199,7 +217,7 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
   }
 
   const batch = sizes.includes(prefs.batch) ? prefs.batch : 0;
-  const count = prefs.mode === 'learn' && batch ? batch : n;
+  const count = mode === 'learn' && batch ? batch : n;
   const steps = [prefs.mcq && 'trắc nghiệm', prefs.write && 'tự luận'].filter(Boolean).join(' rồi ');
 
   return (
@@ -207,7 +225,7 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
       className="card setup"
       onSubmit={(e) => {
         e.preventDefault();
-        onStart({ ...prefs, batch });
+        onStart(mode, { ...prefs, batch }, test);
       }}
     >
       {notice && (
@@ -219,16 +237,23 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
         <legend className="field-label">Chế độ</legend>
         <div className="segmented">
           <label>
-            <input type="radio" name="mode" checked={prefs.mode === 'learn'} onChange={() => set({ mode: 'learn' })} />
+            <input type="radio" name="mode" checked={mode === 'learn'} onChange={() => setMode('learn')} />
             Học
           </label>
           <label>
-            <input type="radio" name="mode" checked={prefs.mode === 'write'} onChange={() => set({ mode: 'write' })} />
+            <input type="radio" name="mode" checked={mode === 'write'} onChange={() => setMode('write')} />
             Viết
+          </label>
+          <label>
+            <input type="radio" name="mode" checked={mode === 'test'} onChange={() => setMode('test')} />
+            Kiểm tra
           </label>
         </div>
       </fieldset>
 
+      {mode === 'test' && <TestSetup n={n} prefs={test} onChange={setTest} />}
+
+      {mode !== 'test' && (
       <fieldset className="field">
         <legend className="field-label">Chiều</legend>
         <div className="segmented">
@@ -242,8 +267,9 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
           </label>
         </div>
       </fieldset>
+      )}
 
-      {prefs.mode === 'learn' && (
+      {mode === 'learn' && (
         <fieldset className="field">
           <legend className="field-label">Loại câu</legend>
           <div className="setup-checks">
@@ -259,7 +285,7 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
         </fieldset>
       )}
 
-      {prefs.mode === 'learn' && sizes.length > 0 && (
+      {mode === 'learn' && sizes.length > 0 && (
         <fieldset className="field">
           <legend className="field-label">Cỡ mẻ</legend>
           <div className="segmented setup-batch">
@@ -278,10 +304,14 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
       )}
 
       <p className="muted">
-        {prefs.mode === 'learn'
+        {mode === 'learn'
           ? `${count} thẻ. Mỗi thẻ phải đúng ${steps} mới xong; sai thì gặp lại.`
-          : `Một lượt qua ${n} thẻ. Sai phải gõ lại đúng mới đi tiếp; điểm tính câu đúng ngay lần đầu.`}
-        {reviewing && ' Học và Viết là luyện tập: học phần đang ôn chỉ lên mốc bằng bài Kiểm tra (đang được làm).'}
+          : mode === 'write'
+            ? `Một lượt qua ${n} thẻ. Sai phải gõ lại đúng mới đi tiếp; điểm tính câu đúng ngay lần đầu.`
+            : test.full
+              ? `${n * 2} câu, mỗi thẻ hỏi cả hai chiều. Sai thì hiện đáp án rồi mới đi tiếp.`
+              : `${practiceCount(test, n)} câu luyện tập. Vẫn ghi điểm từng thẻ, nhưng không lên mốc và không tính lượt.`}
+        {reviewing && mode !== 'test' && ' Học và Viết là luyện tập: học phần đã qua Ngày 1 chỉ lên mốc bằng bài Kiểm tra đủ bài.'}
       </p>
 
       <button className="btn btn-primary btn-lg" type="submit" autoFocus>
@@ -294,7 +324,7 @@ function Setup({ deck, today, notice, onStart }: { deck: any; today: string; not
 /* ---------- Phiên ---------- */
 
 /** Phản hồi đang hiện trên câu VỪA trả lời (máy trạng thái đã sang câu sau). */
-type Hold = { q: any; key: string; ok: boolean; answer: string; picked?: number; correct?: number; manual: boolean; ms: number };
+type Hold = { q: any; key: string; ok: boolean; answer: string; picked?: number | boolean; manual: boolean; ms: number };
 
 type PlayerProps = {
   deck: any;
@@ -312,6 +342,8 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
   const [hold, setHold] = useState<Hold | null>(null);
   const [value, setValue] = useState('');
   const [typed, setTyped] = useState('');
+  /** Kiểm tra, trắc nghiệm / đúng-sai SAI: lựa chọn đã bấm (máy trạng thái dừng ở câu đó, không sang câu sau). */
+  const [pick, setPick] = useState<number | boolean | null>(null);
   const [hint, setHint] = useState<'keyboard' | 'retry' | null>(null);
   const [shake, setShake] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +354,7 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
   const key = hold ? hold.key : liveKey;
   const phase: 'hold' | 'wrong' | 'retype' | 'ask' = hold
     ? 'hold'
-    : sess.kind === 'learn' && sess.phase === 'wrong'
+    : (sess.kind === 'learn' || sess.kind === 'test') && sess.phase === 'wrong'
       ? 'wrong'
       : sess.kind === 'write' && sess.retype
         ? 'retype'
@@ -337,6 +369,7 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
   const clear = () => {
     setValue('');
     setTyped('');
+    setPick(null);
     setHint(null);
   };
   const release = () => {
@@ -344,7 +377,7 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
     clear();
   };
 
-  function run(input: string | number) {
+  function run(input: string | number | boolean) {
     if (!q || phase === 'hold' || phase === 'wrong') return;
     const res: any = sessionAnswer(sess, cards, input);
     const fb = res.feedback;
@@ -359,8 +392,10 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
     setHint(null);
     if (q.dir === 'prod') speak(term); // Việt→Anh: đọc từ SAU khi trả lời
     onStep(res);
-    if (typeof input === 'number') {
-      setHold({ q, key, ok: fb.ok, answer: fb.answer, picked: input, correct: q.options.indexOf(fb.answer), manual: !fb.ok, ms: 450 });
+    if (typeof input !== 'string') {
+      // Kiểm tra sai: máy trạng thái dừng ở câu này (pha wrong). Học sai: đã sang câu sau, màn hình giữ lại câu cũ.
+      if (res.state.phase === 'wrong') setPick(input);
+      else setHold({ q, key, ok: fb.ok, answer: fb.answer, picked: input, manual: !fb.ok, ms: 450 });
     } else if (fb.ok) {
       if (phase === 'retype') clear(); // gõ lại đúng: đi tiếp luôn
       else setHold({ q, key, ok: true, answer: fb.answer, manual: false, ms: 800 });
@@ -451,6 +486,10 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
         run(i);
       }
     }
+    if (phase === 'ask' && q.type === 'tf' && (e.key === '1' || e.key === '2') && !inInput) {
+      e.preventDefault();
+      run(e.key === '1');
+    }
   };
   useEffect(() => {
     const h = (e: KeyboardEvent) => onKey.current(e);
@@ -470,7 +509,7 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
           ← Thoát
         </a>
         <span className="study-name">
-          {deck.name} · {saved.mode === 'learn' ? 'Học' : 'Viết'}
+          {deck.name} · {saved.mode === 'learn' ? 'Học' : saved.mode === 'write' ? 'Viết' : sess.full ? 'Kiểm tra' : 'Luyện tập'}
         </span>
         <button className="icon-btn" type="button" aria-pressed={muted} onClick={() => setMuted(!muted)} onMouseDown={keep} aria-label={muted ? 'Đang tắt tiếng: bấm để bật' : 'Đang bật tiếng: bấm để tắt'} title={muted ? 'Bật tiếng' : 'Tắt tiếng'}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -489,7 +528,20 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
         <QuestionCard dir={q.dir} type={q.type} prompt={q.prompt} onSpeak={canSpeak ? () => speak(term) : undefined} />
 
         {q.type === 'mcq' ? (
-          <ChoiceList options={q.options} onPick={run} picked={hold?.picked} correct={hold?.correct} />
+          <ChoiceList
+            options={q.options}
+            onPick={run}
+            picked={hold ? (hold.picked as number) : phase === 'wrong' ? (typeof pick === 'number' ? pick : -1) : undefined}
+            correct={hold || phase === 'wrong' ? q.options.indexOf(hold ? hold.answer : answerText) : undefined}
+          />
+        ) : q.type === 'tf' ? (
+          <TrueFalse
+            shown={q.shown}
+            onPick={run}
+            answered={!!hold || phase === 'wrong'}
+            picked={hold ? (hold.picked as boolean) : typeof pick === 'boolean' ? pick : undefined}
+            truth={q.shown === answerText}
+          />
         ) : (
           <AnswerInput
             inputRef={inputRef}
@@ -511,7 +563,7 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
           {phase === 'hold' && hold!.ok && (
             <p className="fb fb-ok">
               <strong>✓ Đúng</strong>
-              {q.type !== 'mcq' && <span>{hold!.answer}</span>}
+              {q.type === 'write' && <span>{hold!.answer}</span>}
             </p>
           )}
           {phase === 'hold' && !hold!.ok && (
@@ -534,9 +586,15 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
                 <span>Đáp án: {answerText}</span>
               </p>
               <div className="fb-actions">
-                <button className="btn" type="button" onClick={override} onMouseDown={keep}>
-                  Tôi gõ nhầm phím <kbd>\</kbd>
-                </button>
+                {q.type === 'write' ? (
+                  <button className="btn" type="button" onClick={override} onMouseDown={keep}>
+                    {sess.kind === 'learn' ? 'Tôi gõ nhầm phím' : 'Tôi đã gõ đúng'} <kbd>\</kbd>
+                  </button>
+                ) : (
+                  <button className="btn btn-primary" type="button" onClick={next}>
+                    Tiếp <kbd>Enter</kbd>
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -563,47 +621,5 @@ function Player({ deck, saved, onStep, onFinish, onBroken, onSetup }: PlayerProp
         </div>
       </div>
     </div>
-  );
-}
-
-/* ---------- Kết quả ---------- */
-
-function Result({ deck, today, result, onAgain }: { deck: any; today: string; result: Saved & { summary: any }; onAgain: () => void }) {
-  const s = result.summary;
-  const n = (deck.cards || []).length;
-  const left = leftToday(deck, today);
-  const renamed = deck.name !== result.startName;
-  // Thẻ <a> không nhận autoFocus: tự đưa focus vào để Enter về Hôm nay (học chỉ bằng bàn phím).
-  const homeRef = useRef<HTMLAnchorElement>(null);
-  useEffect(() => homeRef.current?.focus(), []);
-
-  let day1: string | null = null;
-  if (result.recording && result.wasNew) {
-    day1 =
-      left === 0
-        ? `Xong Ngày 1${renamed ? `: học phần đổi tên thành ${deck.name}` : ''}. Mai ôn lần đầu.`
-        : `Còn ${left}/${n} thẻ chưa đúng lần nào hôm nay. Học hết thì xong Ngày 1.`;
-  }
-
-  return (
-    <section className="card result" aria-label="Kết quả">
-      <h2 className="primary-name">{result.mode === 'learn' ? `Xong mẻ ${s.total} thẻ` : `Viết xong ${s.total} thẻ`}</h2>
-      <p className="result-score">
-        <strong>{Math.round(s.pct)}%</strong>
-        <span className="muted">
-          {result.mode === 'learn' ? `chính xác · ${s.tries - s.wrongs}/${s.tries} lượt trả lời đúng` : `đúng ngay lần đầu · ${s.correct}/${s.total} thẻ`}
-        </span>
-      </p>
-      {day1 && <p>{day1}</p>}
-      {!result.recording && <p className="study-offline">Phiên này bắt đầu lúc mất mạng nên không ghi tiến độ.</p>}
-      <div className="result-actions">
-        <a className="btn btn-primary btn-lg" href={hrefOf('today')} ref={homeRef}>
-          Về Hôm nay
-        </a>
-        <button className="btn btn-lg" type="button" onClick={onAgain}>
-          {result.mode === 'learn' ? 'Học mẻ nữa' : 'Làm lại'}
-        </button>
-      </div>
-    </section>
   );
 }

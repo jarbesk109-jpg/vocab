@@ -636,7 +636,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: thanh tiến độ; bật/tắt Trắc nghiệm và Tự luận ngay trên màn; chọn chiều; chọn cỡ mẻ (7/15/20/30/tất cả); phím tắt mục 3.8; ô đáp án có `autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"`; nhắc đổi bàn phím khi `keyboardMismatch`; Anh→Việt đọc từ khi câu hỏi hiện, Việt→Anh đọc sau khi trả lời.
   - Tiêu chí tay: học hết một deck chỉ bằng bàn phím; thoát giữa chừng rồi "Học tiếp" đúng chỗ; trên điện thoại bàn phím không che câu hỏi; chuyển câu mượt.
 
-- [ ] **2.11 Thiết lập Kiểm tra, Kiểm tra, Kết quả** — [UI] — cỡ 2 giờ
+- [x] **2.11 Thiết lập Kiểm tra, Kiểm tra, Kết quả** — [UI] — cỡ 2 giờ
   - File: `v2/src/screens/TestSetup.tsx`, `Test.tsx`, `Result.tsx`.
   - Hành vi: màn thiết lập: số câu ("Đủ bài: N thẻ × 2 chiều, tính lên mốc" hoặc số tuỳ chọn "luyện tập, không tính mốc"), trả lời bằng tiếng nào, loại câu cho từng chiều. Sai thì hiện đáp án + "Tôi đã gõ đúng" / "Tiếp", không tự nhảy. Kết quả: điểm, đạt hay chưa, mốc đổi thế nào, danh sách câu sai, streak.
   - Tiêu chí tay: deck 20 thẻ ra 40 câu; không thấy hai chiều của một từ gần nhau; rớt mạng giữa bài (DevTools offline) vẫn làm tiếp và kết quả tự gửi khi có mạng; đạt KPI thì deck lên mốc và biến khỏi danh sách chờ.
@@ -1011,6 +1011,25 @@ Thử thêm ngoài checklist:
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả (không chạm Supabase thật) và giọng đọc giả, 70/70 mục đạt: học hết mẻ 7 và cả deck 25 thẻ CHỈ bằng bàn phím; trắc nghiệm đúng/sai; tự luận sai chưa ghi cho tới "Tiếp", phím `\` tính đúng + đếm typo; nhắc bàn phím tiếng Việt không chấm, không ghi; thoát giữa chừng → banner "Học tiếp" → tải lại trang → đúng câu, đúng tiến độ, đúng thứ tự lựa chọn; xong Ngày 1 → deck đổi tên `1511`, mốc 1, Hôm nay có ✓ ngay không cần tải lại (bù mục chưa thử của 2.9), streak "đã tính"; Viết: sai phải gõ lại, phím `\` hoàn lại, `history` thêm `mode: 'write'`, mốc không đổi; bắt đầu lúc mất mạng → không lệnh nào vào hàng chờ; rớt mạng giữa phiên → làm tiếp, "đang chờ gửi", có mạng tự gửi; tắt tiếng không đọc gì và nhớ sau khi tải lại; 320/360/414px không tràn ngang, vùng bấm ≥ 44px, phản hồi hiện ra không xê dịch câu hỏi; console không lỗi.
 - Chưa thử được: điện thoại thật (bàn phím có che câu hỏi không, bàn phím có đóng/mở giữa các câu không), giọng đọc thật trên từng máy, cảm giác "chuyển câu mượt" bằng mắt. Khang thử giúp ở `/vocab/v2/`.
 - Lưu ý khi thử trên trang thật: phiên Học/Viết bắt đầu lúc có mạng sẽ GHI vào dữ liệu thật trong tài khoản (điểm thẻ, hoạt động, streak, xong Ngày 1 thì đổi tên deck).
+- **Khang duyệt (15/11)** các chỗ tự quyết ở 2.10.
+
+**Task 2.11 (16/11): Thiết lập Kiểm tra, Kiểm tra, Kết quả + 2 góp ý của Khang**
+- Góp ý 1 (Khang): màn Học phần, mỗi deck là một đường dẫn tới `#/study/<id>` (mở màn thiết lập của deck đó). Phần tiến độ từng deck vẫn là việc của 2.12b.
+- Góp ý 2 (Khang): màn thiết lập có đủ Học / Viết / Kiểm tra. Deck đã qua Ngày 1 (đang ôn, đã hẹn ngày, đã xong vòng) mặc định Kiểm tra đủ bài; deck mới (kể cả học dở) mặc định Học; lúc nào cũng đổi được. Vì mặc định theo loại deck nên chế độ KHÔNG còn nhớ theo máy; các lựa chọn khác (chiều, loại câu, cỡ mẻ) vẫn nhớ.
+- File mới: `v2/src/screens/TestSetup.tsx` (các ô thiết lập Kiểm tra, nhớ ở `recall.test.prefs.v1`), `v2/src/screens/Result.tsx` (màn Kết quả cho cả Học, Viết, Kiểm tra). Sửa `v2/src/screens/Learn.tsx`, `v2/src/components/AnswerInput.tsx` (thêm câu Đúng / Sai), `v2/src/App.tsx`, `v2/src/styles/base.css`.
+- Thiết lập Kiểm tra: "Đủ bài: N thẻ × 2 chiều = 2N câu · Tính lên mốc" hoặc "Số câu tuỳ chọn · Luyện tập, không tính mốc" (kèm số câu và Trả lời bằng Tiếng Anh / Tiếng Việt / Cả hai); loại câu cho từng chiều: Tự luận / Trắc nghiệm / Đúng-Sai / Trộn (mặc định Việt→Anh tự luận, Anh→Việt trắc nghiệm).
+- Trong bài: sai ở mọi loại câu đều dừng lại hiện đáp án, không tự nhảy; tự luận có "Tôi đã gõ đúng" (phím `\`), trắc nghiệm và đúng/sai chỉ có "Tiếp" (Enter). Đúng/Sai: phím `1` = Đúng, `2` = Sai. Thoát giữa bài rồi "Học tiếp" như 2.10.
+- Kết quả: %, số câu đúng, "Đạt / Chưa đạt (KPI x%)", một dòng nói mốc đổi thế nào, dòng streak, danh sách câu sai (chiều + từ + nghĩa), nút "Về Hôm nay" (Enter) và "Làm lại".
+- Người thực thi tự quyết (Khang xem lại):
+  - Không tạo `Test.tsx`: bài Kiểm tra chạy chung bộ phát câu hỏi với Học và Viết trong `Learn.tsx` (cùng phím tắt, cùng cách lưu phiên dở); tách file riêng sẽ phải chép lại gần hết.
+  - "Số câu" luôn mặc định Đủ bài mỗi lần mở thiết lập (kể cả khi lần trước chọn luyện tập), để không lỡ làm bài luyện tập mà tưởng tính mốc. Loại câu, số câu luyện tập, "Trả lời bằng" thì nhớ theo máy.
+  - Số câu luyện tập nhập quá mức tối đa (n hoặc 2n) thì tự hạ về tối đa, không chặn nút Bắt đầu.
+  - Dòng "mốc đổi thế nào" so mốc lúc bắt đầu bài với mốc sau bài: "Lên mốc +3 → +7. Lần ôn kế: dd/mm."; "Chưa đạt sau khi trễ lâu: lùi mốc +7 → +3, ôn lại ngày mai."; "Chưa đạt KPI x%: mốc giữ nguyên ở +N. Làm lại bài đủ hôm nay vẫn được tính."; "Hôm nay học phần này đã xong lượt rồi (mỗi ngày tối đa 1 mốc)"; "Học phần chưa đến hạn ôn: bài này là học thêm".
+  - Danh sách câu sai chỉ gồm câu sai thật (câu đã bấm "Tôi đã gõ đúng" không nằm trong danh sách); bài Học và Viết không có danh sách này.
+  - Tiêu đề màn vẫn ghi "Học" cho cả ba chế độ (tên của đường dẫn `#/study`); trong bài thì thanh đầu ghi "tên deck · Kiểm tra" hoặc "· Luyện tập".
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả (không chạm Supabase thật), 45/45 mục đạt, và chạy lại bài thử 2.10: 70/70. Đã phủ: Học phần bấm vào ra thiết lập; mặc định Kiểm tra với deck ôn, Học với deck mới, đổi qua lại được; deck 25 thẻ ra 50 câu; mỗi thẻ đúng một câu mỗi chiều, hai chiều cách nhau ≥ 8 câu (thấp nhất gặp: 10); tải lại trang giữa bài về đúng câu; rớt mạng giữa bài vẫn làm tiếp, "đang chờ gửi", có mạng tự gửi; tự luận sai / trắc nghiệm sai / đúng-sai sai đều dừng lại hiện đáp án; phím `\` chỉ cứu câu tự luận; đạt 98% → mốc +3 → +7, `history` thêm bài test, deck rời danh sách chờ và có ✓ ở Hôm nay; trượt 67% trên deck trễ lâu → lùi mốc đúng như `applySessionResult`, danh sách 12 câu sai; luyện tập 5 câu tiếng Anh → không đổi mốc, lịch, `history`, vẫn ghi điểm thẻ và hoạt động; Kiểm tra bắt đầu lúc mất mạng → không ghi gì; 360px không tràn ngang ở thiết lập, câu đúng/sai, kết quả; console không lỗi.
+- Tiêu chí "deck 20 thẻ ra 40 câu": thử trên deck 25 thẻ (50 câu) và 18 thẻ (36 câu); cùng một công thức 2n.
+- Chưa thử được: điện thoại thật, Supabase thật. Khang thử giúp ở `/vocab/v2/` (bài Kiểm tra đủ bài bắt đầu lúc có mạng sẽ GHI mốc thật).
 
 ---
 

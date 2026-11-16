@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { studyDay, summarize, toV1 } from '../../logic/index.js';
 import { authErrorText, useSession } from './auth';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
-import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
+import { hrefOf, studyHref, useRoute, useStudyDeckId, type Route } from './router';
 import { Import } from './screens/Import';
 import { Learn } from './screens/Learn';
 import { Login } from './screens/Login';
@@ -153,8 +153,11 @@ function DeckList({ state }: { state: StoreState }) {
     <ul className="card deck-list">
       {state.decks.map((d: any) => (
         <li key={d.id}>
-          <span className="deck-name">{d.name}</span>
-          <span className="muted">{(d.cards || []).length} thẻ</span>
+          <a className="deck-row" href={studyHref(d.id)}>
+            <span className="deck-name">{d.name}</span>
+            <span className="muted">{(d.cards || []).length} thẻ</span>
+            <span className="today-row-go">Học</span>
+          </a>
         </li>
       ))}
     </ul>
