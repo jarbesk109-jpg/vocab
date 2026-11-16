@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { computeStreak, paceInfo, planToday } from '../../../logic/index.js';
 import type { StoreState } from '../data/useStore';
-import { studyHref } from '../router';
+import { hrefOf, studyHref } from '../router';
 
 /** Phiên học dang dở, lưu theo máy (màn Học ở task 2.10 ghi vào đây): `{ deckId, mode, state }`. */
 export const SESSION_KEY = 'recall.session.v1';
@@ -173,7 +173,9 @@ export function Today({ state, today }: { state: StoreState; today: string }) {
       {state.decks.length === 0 ? (
         <div className="card empty">
           <strong>Chưa có học phần nào</strong>
-          <span>Tạo học phần đầu tiên để bắt đầu.</span>
+          <span>
+            <a href={hrefOf('deckNew')}>Tạo học phần đầu tiên</a> để bắt đầu.
+          </span>
         </div>
       ) : primary ? (
         <section className="card primary" aria-label="Việc đầu tiên hôm nay">

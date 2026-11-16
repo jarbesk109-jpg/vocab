@@ -1,6 +1,6 @@
 import { knownDir } from '../../../logic/index.js';
 import type { StoreState } from '../data/useStore';
-import { hrefOf, studyHref } from '../router';
+import { deckEditHref, hrefOf, studyHref } from '../router';
 import { DeckProgress } from './Decks';
 
 type Dir = 'prod' | 'recog';
@@ -44,9 +44,14 @@ export function DeckDetail({ deckId, state, today }: { deckId: string; state: St
 
   return (
     <div className="deck-detail">
-      <a className="study-exit" href={hrefOf('decks')}>
-        ← Học phần
-      </a>
+      <div className="deck-detail-top">
+        <a className="study-exit" href={hrefOf('decks')}>
+          ← Học phần
+        </a>
+        <a className="btn" href={deckEditHref(deck.id)}>
+          Sửa
+        </a>
+      </div>
       <section className="card deck-card" aria-label="Tiến độ">
         <DeckProgress deck={deck} today={today} kpi={kpi} dates />
         <div className="deck-card-actions">

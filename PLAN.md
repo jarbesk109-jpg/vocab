@@ -646,7 +646,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: mỗi deck hiện % thuộc chiều Việt→Anh và chiều Anh→Việt (hai thanh riêng), Viết đã làm chưa và bao nhiêu %, Kiểm tra lần gần nhất và cao nhất, dải 5 mốc Mới/+1/+3/+7/+16 đánh dấu mốc đã qua, lần ôn kế. Màn chi tiết có danh sách thẻ kèm trạng thái từng chiều và sao.
   - Phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`: đã làm ở 2.12a (lệnh `sessionDone`).
 
-- [ ] **2.13b Soạn deck: giao diện** — [UI] — cỡ 1 giờ (logic ở 2.13a)
+- [x] **2.13b Soạn deck: giao diện** — [UI] — cỡ 1 giờ (logic ở 2.13a)
   - File: `v2/src/screens/DeckEditor.tsx`.
   - Hành vi: tạo, sửa, xoá mềm; dán danh sách; cảnh báo từ trùng deck khác (cho bỏ từ trùng hoặc giữ); gắn/gỡ sao. Không giới hạn số từ.
   - Có thể dời sang tuần sau: kho còn 4 deck mới.
@@ -1043,6 +1043,23 @@ Thử thêm ngoài checklist:
   - Thứ tự deck ở Học phần theo `deckOrder` (như dữ liệu), không sắp theo hạn ôn (việc đó là của Hôm nay).
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, 65/65 mục đạt: cả 8 deck của file thật (thêm dữ liệu giả để có deck xong vòng, deck vừa làm Viết 83,4% và Kiểm tra 96%, thẻ vừa sai) khớp từng số với `deckProgress` (hai thanh, Viết, Kiểm tra gần nhất/cao nhất, 5 mốc, lần ôn kế, nhãn); màn chi tiết khớp từng thẻ (từ, nghĩa, sao, trạng thái hai chiều) và ngày qua mốc; bấm Học / Chi tiết / "← Học phần" / Back đi đúng màn; id lạ báo không tìm thấy; 320, 360, 720, 1100px không tràn ngang, vùng bấm ≥ 44px, chữ mốc không bị cắt; console không lỗi. Chạy lại bài thử 2.10 (70/70) và 2.11 (44/44; số mục ít hơn lần trước 1 vì một mục chỉ chạy khi câu sai đầu tiên là câu Đúng/Sai).
 - Chưa thử được: điện thoại thật.
+- **Khang duyệt (17/11)** các chỗ tự quyết ở 2.12b.
+
+**Task 2.13b (17/11): soạn học phần**
+- File mới: `v2/src/screens/DeckEditor.tsx`. Sửa `v2/src/router.ts` (thêm `#/decks/new`, `#/decks/<id>/edit`), `v2/src/App.tsx`, `v2/src/screens/Decks.tsx` (nút "Tạo học phần"), `DeckDetail.tsx` (nút "Sửa"), `Today.tsx` (tài khoản 0 deck: dòng "Tạo học phần đầu tiên" thành đường dẫn), `v2/src/styles/base.css`.
+- Màn soạn: tên học phần; danh sách thẻ (ô từ, ô nghĩa, nút sao, nút xoá dòng, "Thêm thẻ"); ô "Dán danh sách" (`từ: nghĩa` hoặc `từ<Tab>nghĩa`, dùng `parseCards`); cảnh báo từ trùng học phần khác (`findDupTerms`, ghi rõ trùng với deck nào) kèm nút "Bỏ N từ trùng" (`dropDupTerms`), không bấm thì giữ; nút "Tạo học phần" / "Lưu thay đổi"; khi sửa có thêm "Xoá học phần" (hỏi lại rồi mới xoá, xoá mềm).
+- Lưu phát lệnh `deckUpsert` (deck đã có: chỉ đổi tên và nội dung thẻ, tiến độ giữ nguyên, theo 2.5); sao của thẻ ĐÃ CÓ đổi thì phát thêm lệnh `star` cho từng thẻ; thẻ MỚI mang sao theo trong `deckUpsert`. Xoá phát `deckDelete`.
+- Người thực thi tự quyết (Khang xem lại):
+  - Không lưu khi: chưa đặt tên, không có thẻ nào, hoặc có dòng thiếu từ / thiếu nghĩa (báo số dòng). Dòng trống hoàn toàn thì tự bỏ.
+  - Enter ở ô nghĩa: xuống dòng dưới; ở dòng cuối thì thêm dòng mới. Enter không lưu cả học phần (phải bấm nút), để gõ nhanh không lỡ tay lưu.
+  - Dán danh sách: dòng không đọc được ở lại trong ô dán để sửa rồi thêm tiếp; không tự bỏ dòng trùng trong chính danh sách dán (như 2.13a).
+  - Đang soạn dở mà đóng tab / tải lại thì trình duyệt hỏi lại. Bấm sang màn khác TRONG app thì KHÔNG hỏi, phần đang soạn mất (chưa làm chặn chuyển màn).
+  - Sau khi lưu mở màn chi tiết của deck đó; sau khi xoá về Học phần.
+  - Lời xác nhận xoá ghi "Dữ liệu vẫn được giữ trên máy chủ để khôi phục": nút khôi phục thuộc 2.15 (Cài đặt → Nâng cao), HIỆN CHƯA CÓ.
+  - Id deck mới dạng `s` + 12 ký tự ngẫu nhiên, id thẻ `c` + 12 ký tự.
+  - Tài khoản chưa có dữ liệu vẫn chỉ thấy màn Chuyển dữ liệu (luật 2.6), chưa tạo deck từ số 0 được.
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, 31/31 mục đạt: tạo deck (gõ tay + dán 2 kiểu dấu tách, dòng lỗi, 2 từ trùng không phân biệt hoa thường, bỏ từ trùng, giữ từ trùng, xoá dòng, gắn sao) → máy chủ có deck mới đúng thứ tự thẻ, mốc 0, vào "Kho deck mới" ở Hôm nay; sửa deck đang ôn (đổi tên, sửa nghĩa, đảo sao, bỏ thẻ, thêm thẻ) → mốc, lịch, lịch sử, điểm từng thẻ giữ nguyên; soạn dở tải lại thì trình duyệt hỏi, không ghi gì; xoá hỏi lại, xoá mềm (dòng deck còn trên máy chủ, đủ thẻ); dán 300 thẻ một lần lưu đủ; 360px không tràn ngang, vùng bấm ≥ 44px; console không lỗi. Chạy lại bài thử 2.11 (45/45), 2.12b (65/65).
+- Chưa thử được: điện thoại thật, Supabase thật.
 
 ---
 

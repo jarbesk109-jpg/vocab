@@ -1,6 +1,6 @@
 import { deckProgress } from '../../../logic/index.js';
 import type { StoreState } from '../data/useStore';
-import { deckHref, studyHref } from '../router';
+import { deckHref, hrefOf, studyHref } from '../router';
 
 const STAGE_LABELS = ['Mới', '+1', '+3', '+7', '+16'];
 
@@ -88,11 +88,19 @@ export function Decks({ state, today }: { state: StoreState; today: string }) {
     return (
       <div className="card empty">
         <strong>Chưa có học phần nào</strong>
-        <span>Các học phần và tiến độ của từng học phần sẽ hiện ở đây.</span>
+        <span>
+          <a href={hrefOf('deckNew')}>Tạo học phần đầu tiên</a> để bắt đầu.
+        </span>
       </div>
     );
   }
   return (
+    <>
+    <div className="decks-top">
+      <a className="btn" href={hrefOf('deckNew')}>
+        Tạo học phần
+      </a>
+    </div>
     <ul className="decks">
       {state.decks.map((d: any) => {
         const tag = statusTag(deckProgress(d, today, kpi).status);
@@ -120,5 +128,6 @@ export function Decks({ state, today }: { state: StoreState; today: string }) {
         );
       })}
     </ul>
+    </>
   );
 }

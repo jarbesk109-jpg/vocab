@@ -1348,6 +1348,130 @@ kbd {
   }
 }
 
+/* ---------- Soạn học phần ---------- */
+
+.decks-top {
+  display: flex;
+  justify-content: flex-end;
+}
+.decks-top .btn,
+.deck-detail-top .btn {
+  text-decoration: none;
+}
+.deck-detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.editor {
+  display: grid;
+  gap: var(--space-4);
+}
+.editor > .study-exit {
+  justify-self: start;
+}
+.editor-cards,
+.editor-paste {
+  display: grid;
+  gap: var(--space-3);
+}
+.editor-cards ol {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.editor-cards li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) var(--tap) var(--tap);
+  grid-template-areas:
+    'no term star del'
+    '.  def  def  def';
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.editor-cards li > .editor-no {
+  grid-area: no;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.editor-cards li > input:nth-of-type(1) {
+  grid-area: term;
+}
+.editor-cards li > input:nth-of-type(2) {
+  grid-area: def;
+}
+.editor-cards li > .editor-star {
+  grid-area: star;
+}
+.editor-cards li > .icon-btn:last-child {
+  grid-area: del;
+}
+.editor-star {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.editor-star[aria-pressed='true'] {
+  color: var(--flame);
+}
+.editor-cards > .btn,
+.editor-paste > .btn {
+  justify-self: start;
+}
+.editor-paste textarea {
+  min-height: 7rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+.editor-dups {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: 0;
+}
+.editor-dups ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+.editor-dups .btn {
+  justify-self: start;
+}
+.editor-actions {
+  display: grid;
+  gap: var(--space-3);
+}
+.editor-danger {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+}
+.editor-actions > .editor-danger {
+  justify-self: start;
+}
+.editor-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.editor-confirm > span {
+  flex: 1 1 14rem;
+}
+@media (min-width: 40em) {
+  .editor-cards li {
+    grid-template-columns: 1.75rem minmax(0, 2fr) minmax(0, 3fr) var(--tap) var(--tap);
+    grid-template-areas: 'no term def star del';
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -4,6 +4,7 @@ import { authErrorText, useSession } from './auth';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
 import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
 import { DeckDetail } from './screens/DeckDetail';
+import { DeckEditor } from './screens/DeckEditor';
 import { Decks } from './screens/Decks';
 import { Import } from './screens/Import';
 import { Learn } from './screens/Learn';
@@ -50,6 +51,8 @@ const TITLES: Record<Route, string> = {
   today: 'Hôm nay',
   decks: 'Học phần',
   deck: 'Học phần',
+  deckNew: 'Tạo học phần',
+  deckEdit: 'Sửa học phần',
   settings: 'Cài đặt',
   import: 'Chuyển dữ liệu',
   study: 'Học',
@@ -289,7 +292,7 @@ function Shell({ userId, email }: { userId: string; email: string }) {
         <ul className="nav-list">
           {NAV.map((item) => (
             <li key={item.route}>
-              <a className="nav-link" href={hrefOf(item.route)} aria-current={hashRoute === item.route || (item.route === 'decks' && hashRoute === 'deck') ? 'page' : undefined}>
+              <a className="nav-link" href={hrefOf(item.route)} aria-current={hashRoute === item.route || (item.route === 'decks' && (hashRoute === 'deck' || hashRoute === 'deckNew' || hashRoute === 'deckEdit')) ? 'page' : undefined}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   {item.icon}
                 </svg>
@@ -311,6 +314,16 @@ function Shell({ userId, email }: { userId: string; email: string }) {
           {route === 'decks' && (
             <Screen route="decks">
               <Decks state={state} today={studyDay(Date.now())} />
+            </Screen>
+          )}
+          {route === 'deckNew' && (
+            <Screen route="deckNew">
+              <DeckEditor key="new" deckId="" state={state} send={send} />
+            </Screen>
+          )}
+          {route === 'deckEdit' && (
+            <Screen route="deckEdit" sub={state.decks.find((x: any) => x.id === studyDeckId)?.name}>
+              <DeckEditor key={studyDeckId} deckId={studyDeckId} state={state} send={send} />
             </Screen>
           )}
           {route === 'deck' && (
