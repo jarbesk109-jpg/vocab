@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { dropDupTerms, findDupTerms, parseCards } from '../../../logic/index.js';
 import type { StoreState } from '../data/useStore';
-import { deckHref, hrefOf } from '../router';
+import { deckHref, hrefOf, setLeaveGuard } from '../router';
 
 /** Một dòng đang soạn. `id` có khi là thẻ đã có trong deck; `was` là sao lúc mở màn (để biết sao có đổi không). */
 type Row = { key: string; id: string | null; term: string; def: string; starred: boolean; was: boolean };
@@ -37,12 +37,16 @@ export function DeckEditor({ deckId, state, send }: Props) {
   const focusKey = useRef<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
 
-  // Đang soạn dở mà đóng tab / tải lại: trình duyệt hỏi lại.
+  // Đang soạn dở: đóng tab / tải lại thì trình duyệt hỏi lại; chuyển màn trong app thì app hỏi lại (Khang 17/11).
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
+    setLeaveGuard('Học phần đang soạn còn thay đổi chưa lưu. Rời màn này thì các thay đổi đó bị bỏ. Vẫn rời?');
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      setLeaveGuard(null);
+    };
   }, [dirty]);
 
   // Dòng vừa thêm bằng Enter thì nhận focus.
@@ -113,12 +117,14 @@ export function DeckEditor({ deckId, state, send }: Props) {
     send({ type: 'deckUpsert', deck: { id, name: title, cards } });
     for (const r of filled) if (r.id && r.starred !== r.was) send({ type: 'star', deckId: id, cardId: r.id, starred: r.starred });
     setDirty(false);
+    setLeaveGuard(null); // đã lưu: rời màn không hỏi
     window.location.hash = deckHref(id);
   }
 
   function remove() {
     send({ type: 'deckDelete', deckId });
     setDirty(false);
+    setLeaveGuard(null);
     window.location.hash = hrefOf('decks');
   }
 

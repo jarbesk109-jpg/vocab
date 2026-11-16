@@ -49,6 +49,36 @@ function parse(hash: string): Route | null {
   return null;
 }
 
+/* Chặn rời màn khi còn thay đổi chưa lưu (màn soạn học phần). */
+let guard: { hash: string; message: string } | null = null;
+
+/** Bật (truyền lời hỏi) hoặc tắt (null) việc hỏi lại trước khi rời màn hiện tại. */
+export function setLeaveGuard(message: string | null): void {
+  guard = message ? { hash: window.location.hash, message } : null;
+}
+
+// Bấm một đường dẫn trong app: hỏi trước, không đồng ý thì không đi.
+document.addEventListener(
+  'click',
+  (e) => {
+    if (!guard || e.defaultPrevented || e.button !== 0) return;
+    const a = (e.target as Element | null)?.closest?.('a[href]');
+    const href = a?.getAttribute('href') ?? '';
+    if (!href.startsWith('#') || href === guard.hash) return;
+    if (window.confirm(guard.message)) guard = null;
+    else e.preventDefault();
+  },
+  true,
+);
+
+// Nút Back / Forward hoặc sửa địa chỉ: hash đã đổi rồi mới biết. Không đồng ý thì đưa địa chỉ về màn cũ
+// ngay trong lúc này, trước khi app kịp đổi màn (listener này đăng ký trước listener của useRoute).
+window.addEventListener('hashchange', () => {
+  if (!guard || window.location.hash === guard.hash) return;
+  if (window.confirm(guard.message)) guard = null;
+  else window.location.hash = guard.hash;
+});
+
 function subscribe(onChange: () => void): () => void {
   window.addEventListener('hashchange', onChange);
   return () => window.removeEventListener('hashchange', onChange);
