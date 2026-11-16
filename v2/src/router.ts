@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 /** Các màn của app. Định tuyến bằng hash để chạy được trên GitHub Pages và nút Back đi đúng màn. */
-export type Route = 'today' | 'decks' | 'settings' | 'import' | 'study';
+export type Route = 'today' | 'decks' | 'deck' | 'settings' | 'import' | 'study';
 
 const PATHS: Record<Route, string> = {
   today: '#/',
   decks: '#/decks',
+  deck: '#/decks',
   settings: '#/settings',
   import: '#/import',
   study: '#/study',
@@ -14,6 +15,11 @@ const PATHS: Record<Route, string> = {
 /** Đường dẫn vào màn học của một deck: `#/study/<id>`. */
 export function studyHref(deckId: string): string {
   return `${PATHS.study}/${encodeURIComponent(deckId)}`;
+}
+
+/** Đường dẫn vào màn chi tiết của một deck: `#/decks/<id>`. */
+export function deckHref(deckId: string): string {
+  return `${PATHS.decks}/${encodeURIComponent(deckId)}`;
 }
 
 /** Đường dẫn (hash) của một màn, dùng cho thuộc tính href. */
@@ -25,6 +31,7 @@ function parse(hash: string): Route | null {
   const path = hash.replace(/^#\/?/, '').replace(/\/+$/, '');
   if (path === '') return 'today';
   if (path === 'decks') return 'decks';
+  if (/^decks\/[^/]+$/.test(path)) return 'deck';
   if (path === 'settings') return 'settings';
   if (path === 'import') return 'import';
   if (/^study\/[^/]+$/.test(path)) return 'study';
@@ -49,7 +56,7 @@ export function useRoute(): Route {
 }
 
 function paramSnapshot(): string {
-  const m = window.location.hash.match(/^#\/?study\/([^/]+)\/?$/);
+  const m = window.location.hash.match(/^#\/?(?:study|decks)\/([^/]+)\/?$/);
   if (!m) return '';
   try {
     return decodeURIComponent(m[1]);
@@ -58,7 +65,7 @@ function paramSnapshot(): string {
   }
 }
 
-/** Id deck trong `#/study/<id>` (chuỗi rỗng ở các màn khác). */
+/** Id deck trong `#/study/<id>` hoặc `#/decks/<id>` (chuỗi rỗng ở các màn khác). */
 export function useStudyDeckId(): string {
   return useSyncExternalStore(subscribe, paramSnapshot);
 }

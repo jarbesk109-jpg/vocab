@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { studyDay, summarize, toV1 } from '../../logic/index.js';
 import { authErrorText, useSession } from './auth';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
-import { hrefOf, studyHref, useRoute, useStudyDeckId, type Route } from './router';
+import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
+import { DeckDetail } from './screens/DeckDetail';
+import { Decks } from './screens/Decks';
 import { Import } from './screens/Import';
 import { Learn } from './screens/Learn';
 import { Login } from './screens/Login';
@@ -47,6 +49,7 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
 const TITLES: Record<Route, string> = {
   today: 'Hôm nay',
   decks: 'Học phần',
+  deck: 'Học phần',
   settings: 'Cài đặt',
   import: 'Chuyển dữ liệu',
   study: 'Học',
@@ -144,24 +147,6 @@ function SyncPill({ status, online }: { status: StoreStatus; online: boolean }) 
 function formatDay(day: string): string {
   const [y, m, d] = day.split('-');
   return `${d}/${m}/${y}`;
-}
-
-/** Danh sách học phần tối giản (tiến độ từng học phần làm ở task 2.12b). */
-function DeckList({ state }: { state: StoreState }) {
-  if (!state.decks.length) return <Empty title="Chưa có học phần nào">Các học phần và tiến độ của từng học phần sẽ hiện ở đây.</Empty>;
-  return (
-    <ul className="card deck-list">
-      {state.decks.map((d: any) => (
-        <li key={d.id}>
-          <a className="deck-row" href={studyHref(d.id)}>
-            <span className="deck-name">{d.name}</span>
-            <span className="muted">{(d.cards || []).length} thẻ</span>
-            <span className="today-row-go">Học</span>
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function Kpi({ value, onChange }: { value: number; onChange: (kpi: number) => void }) {
@@ -304,7 +289,7 @@ function Shell({ userId, email }: { userId: string; email: string }) {
         <ul className="nav-list">
           {NAV.map((item) => (
             <li key={item.route}>
-              <a className="nav-link" href={hrefOf(item.route)} aria-current={hashRoute === item.route ? 'page' : undefined}>
+              <a className="nav-link" href={hrefOf(item.route)} aria-current={hashRoute === item.route || (item.route === 'decks' && hashRoute === 'deck') ? 'page' : undefined}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   {item.icon}
                 </svg>
@@ -325,7 +310,12 @@ function Shell({ userId, email }: { userId: string; email: string }) {
           )}
           {route === 'decks' && (
             <Screen route="decks">
-              <DeckList state={state} />
+              <Decks state={state} today={studyDay(Date.now())} />
+            </Screen>
+          )}
+          {route === 'deck' && (
+            <Screen route="deck" sub={state.decks.find((x: any) => x.id === studyDeckId)?.name}>
+              <DeckDetail key={studyDeckId} deckId={studyDeckId} state={state} today={studyDay(Date.now())} />
             </Screen>
           )}
           {route === 'settings' && (

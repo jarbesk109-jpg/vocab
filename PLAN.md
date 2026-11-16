@@ -641,7 +641,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: màn thiết lập: số câu ("Đủ bài: N thẻ × 2 chiều, tính lên mốc" hoặc số tuỳ chọn "luyện tập, không tính mốc"), trả lời bằng tiếng nào, loại câu cho từng chiều. Sai thì hiện đáp án + "Tôi đã gõ đúng" / "Tiếp", không tự nhảy. Kết quả: điểm, đạt hay chưa, mốc đổi thế nào, danh sách câu sai, streak.
   - Tiêu chí tay: deck 20 thẻ ra 40 câu; không thấy hai chiều của một từ gần nhau; rớt mạng giữa bài (DevTools offline) vẫn làm tiếp và kết quả tự gửi khi có mạng; đạt KPI thì deck lên mốc và biến khỏi danh sách chờ.
 
-- [ ] **2.12b Tiến độ từng học phần: giao diện** — [UI] — cỡ 1,25 giờ (logic ở 2.12a)
+- [x] **2.12b Tiến độ từng học phần: giao diện** — [UI] — cỡ 1,25 giờ (logic ở 2.12a)
   - File: `v2/src/screens/Decks.tsx`, `DeckDetail.tsx`.
   - Hành vi: mỗi deck hiện % thuộc chiều Việt→Anh và chiều Anh→Việt (hai thanh riêng), Viết đã làm chưa và bao nhiêu %, Kiểm tra lần gần nhất và cao nhất, dải 5 mốc Mới/+1/+3/+7/+16 đánh dấu mốc đã qua, lần ôn kế. Màn chi tiết có danh sách thẻ kèm trạng thái từng chiều và sao.
   - Phiên Viết ghi vào `history` phần tử `{ date, pct, mode: 'write' }`: đã làm ở 2.12a (lệnh `sessionDone`).
@@ -1030,6 +1030,19 @@ Thử thêm ngoài checklist:
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả (không chạm Supabase thật), 45/45 mục đạt, và chạy lại bài thử 2.10: 70/70. Đã phủ: Học phần bấm vào ra thiết lập; mặc định Kiểm tra với deck ôn, Học với deck mới, đổi qua lại được; deck 25 thẻ ra 50 câu; mỗi thẻ đúng một câu mỗi chiều, hai chiều cách nhau ≥ 8 câu (thấp nhất gặp: 10); tải lại trang giữa bài về đúng câu; rớt mạng giữa bài vẫn làm tiếp, "đang chờ gửi", có mạng tự gửi; tự luận sai / trắc nghiệm sai / đúng-sai sai đều dừng lại hiện đáp án; phím `\` chỉ cứu câu tự luận; đạt 98% → mốc +3 → +7, `history` thêm bài test, deck rời danh sách chờ và có ✓ ở Hôm nay; trượt 67% trên deck trễ lâu → lùi mốc đúng như `applySessionResult`, danh sách 12 câu sai; luyện tập 5 câu tiếng Anh → không đổi mốc, lịch, `history`, vẫn ghi điểm thẻ và hoạt động; Kiểm tra bắt đầu lúc mất mạng → không ghi gì; 360px không tràn ngang ở thiết lập, câu đúng/sai, kết quả; console không lỗi.
 - Tiêu chí "deck 20 thẻ ra 40 câu": thử trên deck 25 thẻ (50 câu) và 18 thẻ (36 câu); cùng một công thức 2n.
 - Chưa thử được: điện thoại thật, Supabase thật. Khang thử giúp ở `/vocab/v2/` (bài Kiểm tra đủ bài bắt đầu lúc có mạng sẽ GHI mốc thật).
+- **Khang duyệt (16/11)** các chỗ tự quyết ở 2.11.
+
+**Task 2.12b (17/11): tiến độ từng học phần**
+- File mới: `v2/src/screens/Decks.tsx` (màn Học phần + khối tiến độ dùng chung), `v2/src/screens/DeckDetail.tsx`. Sửa `v2/src/router.ts` (thêm `#/decks/<id>`), `v2/src/App.tsx` (bỏ danh sách tối giản cũ), `v2/src/styles/base.css`.
+- Học phần: mỗi deck một thẻ gồm tên + nhãn trạng thái (`CHƯA HỌC`, `HỌC TIẾP`, `ÔN +N · trễ Nd`, `HẸN dd/mm`, `XONG VÒNG`) + số thẻ; hai thanh riêng "Việt → Anh x%" và "Anh → Việt x%"; "Viết: x% (dd/mm)" hoặc "chưa làm"; "Kiểm tra: gần nhất x% (dd/mm) · cao nhất y%" hoặc "chưa làm"; dải 5 mốc Mới / +1 / +3 / +7 / +16 (mốc đã qua có ✓ và nền xanh, mốc đang đứng có viền); dòng "Lần ôn kế: …"; hai nút "Học" và "Chi tiết". Mọi số lấy từ `deckProgress(deck, today, kpi)`.
+- Chi tiết (`#/decks/<id>`): cùng khối tiến độ, thêm ngày qua từng mốc (dữ liệu cũ không ghi ngày thì ghi "đã qua"); danh sách thẻ theo thứ tự trong deck: từ, nghĩa, ★ nếu có sao, và mỗi chiều một nhãn "chưa học" / "đang học · N đúng, N sai" / "✓ thuộc".
+- Người thực thi tự quyết (Khang xem lại):
+  - Góp ý trước của Khang là "bấm deck để học". Giờ mỗi thẻ deck có HAI đường: nút "Học" (màu nhấn) mở màn thiết lập, còn bấm tên deck hoặc nút "Chi tiết" mở màn chi tiết. Lý do: cần một đường vào màn chi tiết mà task yêu cầu. Khang muốn bấm tên deck cũng là học thì báo.
+  - Sao chỉ HIỂN THỊ ở màn chi tiết; gắn/gỡ sao bằng tay thuộc 2.13b (soạn deck).
+  - "đang học" kèm tổng số lần đúng, sai của chiều đó; chiều chưa có lượt trả lời nào ghi "chưa học".
+  - Thứ tự deck ở Học phần theo `deckOrder` (như dữ liệu), không sắp theo hạn ôn (việc đó là của Hôm nay).
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, 65/65 mục đạt: cả 8 deck của file thật (thêm dữ liệu giả để có deck xong vòng, deck vừa làm Viết 83,4% và Kiểm tra 96%, thẻ vừa sai) khớp từng số với `deckProgress` (hai thanh, Viết, Kiểm tra gần nhất/cao nhất, 5 mốc, lần ôn kế, nhãn); màn chi tiết khớp từng thẻ (từ, nghĩa, sao, trạng thái hai chiều) và ngày qua mốc; bấm Học / Chi tiết / "← Học phần" / Back đi đúng màn; id lạ báo không tìm thấy; 320, 360, 720, 1100px không tràn ngang, vùng bấm ≥ 44px, chữ mốc không bị cắt; console không lỗi. Chạy lại bài thử 2.10 (70/70) và 2.11 (44/44; số mục ít hơn lần trước 1 vì một mục chỉ chạy khi câu sai đầu tiên là câu Đúng/Sai).
+- Chưa thử được: điện thoại thật.
 
 ---
 

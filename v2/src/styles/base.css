@@ -490,37 +490,11 @@ textarea {
   width: min(100%, 8rem);
 }
 
-/* ---------- Danh sách học phần (tối giản) ---------- */
+/* ---------- Tên học phần (dùng ở Hôm nay và Học phần) ---------- */
 
-.deck-list {
-  list-style: none;
-  margin: 0;
-  padding-block: var(--space-2);
-}
-.deck-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: 3.25rem;
-  padding-block: var(--space-2);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.deck-row .deck-name {
-  flex: 1;
-}
-.deck-row:hover .today-row-go {
-  text-decoration: underline;
-}
-.deck-list li + li {
-  border-top: 1px solid var(--line);
-}
 .deck-name {
   font-weight: 600;
   min-width: 0;
-}
-.deck-list .muted {
-  flex: none;
 }
 
 /* ---------- Chuyển dữ liệu ---------- */
@@ -1180,6 +1154,198 @@ kbd {
   gap: 0.125rem;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* ---------- Học phần: tiến độ từng deck, chi tiết ---------- */
+
+.decks {
+  display: grid;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.deck-card {
+  display: grid;
+  gap: var(--space-4);
+}
+.deck-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.deck-card-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  min-height: var(--tap);
+  text-decoration: none;
+}
+.deck-card-title .deck-name {
+  font-size: var(--text-lg);
+}
+.deck-card-title:hover .deck-name {
+  text-decoration: underline;
+}
+.deck-card-head .muted {
+  flex: none;
+  font-size: var(--text-sm);
+}
+.deck-card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.deck-card-actions .btn {
+  flex: 1;
+  text-decoration: none;
+}
+
+.dp {
+  display: grid;
+  gap: var(--space-3);
+}
+.dp-bars {
+  display: grid;
+  gap: var(--space-2);
+}
+.dp-bar {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.dp-bar-label {
+  color: var(--ink-2);
+}
+.dp-bar-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+}
+.dp-facts {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.dp-facts > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.dp-facts dt {
+  color: var(--ink-2);
+}
+.dp-facts dd {
+  margin: 0;
+}
+.dp-stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dp-stages li {
+  display: grid;
+  gap: 0.125rem;
+  justify-items: center;
+  padding: var(--space-1) 0.125rem;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.dp-stages li[data-passed] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.dp-stages li[data-current] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.dp-stage-date {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.dp-next {
+  font-size: var(--text-sm);
+}
+
+.deck-detail {
+  display: grid;
+  gap: var(--space-3);
+}
+.deck-detail .study-exit {
+  justify-self: start;
+}
+.deck-cards {
+  display: grid;
+  gap: var(--space-2);
+}
+.deck-cards ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.deck-cards li {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+}
+.deck-cards li + li {
+  border-top: 1px solid var(--line);
+}
+.card-pair {
+  display: grid;
+  gap: 0.125rem;
+  overflow-wrap: anywhere;
+}
+.card-star {
+  color: var(--flame);
+}
+.card-dirs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+.dir-chip {
+  padding: 0.125rem var(--space-2);
+  background: var(--surface-2);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+.dir-chip-dir {
+  margin-right: var(--space-2);
+  font-weight: 700;
+}
+.dir-chip[data-kind='known'] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.dir-chip[data-kind='none'] {
+  color: var(--ink-3);
+}
+@media (min-width: 40em) {
+  .deck-cards li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .card-dirs {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
