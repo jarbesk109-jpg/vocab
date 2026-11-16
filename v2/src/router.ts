@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 /** Các màn của app. Định tuyến bằng hash để chạy được trên GitHub Pages và nút Back đi đúng màn. */
-export type Route = 'today' | 'decks' | 'deck' | 'deckNew' | 'deckEdit' | 'settings' | 'import' | 'study';
+export type Route = 'today' | 'decks' | 'deck' | 'deckNew' | 'deckEdit' | 'settings' | 'import' | 'study' | 'fx';
 
 const PATHS: Record<Route, string> = {
   today: '#/',
@@ -12,6 +12,7 @@ const PATHS: Record<Route, string> = {
   settings: '#/settings',
   import: '#/import',
   study: '#/study',
+  fx: '#/fx',
 };
 
 /** Đường dẫn vào màn học của một deck: `#/study/<id>`. */
@@ -43,6 +44,7 @@ function parse(hash: string): Route | null {
   if (/^decks\/[^/]+\/edit$/.test(path)) return 'deckEdit';
   if (path === 'settings') return 'settings';
   if (path === 'import') return 'import';
+  if (path === 'fx') return 'fx';
   if (/^study\/[^/]+$/.test(path)) return 'study';
   return null;
 }

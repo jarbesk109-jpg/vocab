@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { studyDay, summarize, toV1 } from '../../logic/index.js';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { computeStreak, streakEvents, studyDay, summarize, toV1 } from '../../logic/index.js';
 import { authErrorText, useSession } from './auth';
+import { Celebration } from './components/Celebration';
+import { FlameToast } from './components/Flame';
 import { useStore, type StoreState, type StoreStatus } from './data/useStore';
 import { hrefOf, useRoute, useStudyDeckId, type Route } from './router';
 import { DeckDetail } from './screens/DeckDetail';
@@ -56,6 +58,7 @@ const TITLES: Record<Route, string> = {
   settings: 'Cài đặt',
   import: 'Chuyển dữ liệu',
   study: 'Học',
+  fx: 'Xem thử hiệu ứng',
 };
 
 /** '2026-11-15' → 'Chủ nhật, 15/11' (ngày học: ngày mới bắt đầu lúc 4h sáng). */
@@ -250,10 +253,66 @@ export function App() {
   return <Shell key={session.user.id} userId={session.user.id} email={session.user.email ?? ''} />;
 }
 
+/** Hiệu ứng streak đang hiện: lửa bùng (nhãn nổi) hoặc màn chúc mừng lớn ở mốc. */
+type StreakFx = { id: number; count: number; milestone: boolean; freezeEarned: boolean };
+
+/** Xem thử hiệu ứng streak mà không đụng dữ liệu (`#/fx`, không có trên thanh điều hướng). */
+function FxPreview({ show }: { show: (fx: StreakFx) => void }) {
+  const go = (count: number, milestone: boolean, freezeEarned = false) => show({ id: Date.now(), count, milestone, freezeEarned });
+  return (
+    <div className="card fx-preview">
+      <p className="muted">Các nút dưới đây chỉ chạy hiệu ứng, không ghi gì vào dữ liệu.</p>
+      <button className="btn" type="button" onClick={() => go(3, false)}>
+        Lửa bùng (streak lên 3)
+      </button>
+      <button className="btn" type="button" onClick={() => go(21, false, true)}>
+        Lửa bùng + nhận băng (streak lên 21)
+      </button>
+      <button className="btn" type="button" onClick={() => go(10, true)}>
+        Mốc 10
+      </button>
+      <button className="btn" type="button" onClick={() => go(100, true)}>
+        Mốc 100
+      </button>
+    </div>
+  );
+}
+
 function Shell({ userId, email }: { userId: string; email: string }) {
   const hashRoute = useRoute();
   const studyDeckId = useStudyDeckId();
-  const { store, state, status, online, boot, send, retry } = useStore(userId);
+  const { store, state, status, online, boot, retry } = useStore(userId);
+  const [fx, setFx] = useState<StreakFx | null>(null);
+  const closeFx = useCallback(() => setFx(null), []);
+
+  // Mọi lệnh của app đi qua đây: so streak ngay TRƯỚC và ngay SAU lệnh (cùng một ngày học) để biết
+  // có cần lửa bùng / màn chúc mừng không. Thay đổi tới từ máy khác (tải lại bản server) không đi qua đây
+  // nên không gây hiệu ứng.
+  const dispatch = useCallback(
+    (cmd: Record<string, unknown>) => {
+      const day = studyDay(Date.now());
+      const streakOf = () => {
+        const m = store.getState().meta;
+        return computeStreak(m.activity || {}, m.streak?.freezeUsedDays ?? [], day);
+      };
+      const before = streakOf();
+      const full = store.dispatch(cmd);
+      const after = streakOf();
+      const ev = streakEvents(before, after);
+      if (ev.fire || ev.milestone) setFx({ id: Date.now(), count: after.count, milestone: ev.milestone, freezeEarned: ev.freezeEarned });
+      return full;
+    },
+    [store],
+  );
+  /** Phát một lệnh rồi gửi ngay. */
+  const send = useCallback(
+    (cmd: Record<string, unknown>) => {
+      const full = dispatch(cmd);
+      void store.flush();
+      return full;
+    },
+    [dispatch, store],
+  );
   // Tài khoản chưa có dữ liệu: mọi màn (trừ Cài đặt, để còn đăng xuất) đều là màn chuyển dữ liệu.
   const route: Route = boot === 'ready' && status.empty && hashRoute !== 'settings' ? 'import' : hashRoute;
   const shown = useRef(route);
@@ -304,11 +363,13 @@ function Shell({ userId, email }: { userId: string; email: string }) {
       </nav>
 
       <SyncPill status={status} online={online} />
+      {fx && !fx.milestone && <FlameToast key={fx.id} count={fx.count} freezeEarned={fx.freezeEarned} onDone={closeFx} />}
+      {fx && fx.milestone && <Celebration key={fx.id} count={fx.count} freezeEarned={fx.freezeEarned} onClose={closeFx} />}
       <main className="main">
         <div className="main-inner">
           {route === 'today' && (
             <Screen route="today" sub={formatStudyDay(studyDay(Date.now()))}>
-              <Today state={state} today={studyDay(Date.now())} />
+              <Today state={state} today={studyDay(Date.now())} send={send} />
             </Screen>
           )}
           {route === 'decks' && (
@@ -338,7 +399,12 @@ function Shell({ userId, email }: { userId: string; email: string }) {
           )}
           {route === 'study' && (
             <Screen route="study" sub={state.decks.find((x: any) => x.id === studyDeckId)?.name}>
-              <Learn key={studyDeckId} deckId={studyDeckId} state={state} store={store} today={studyDay(Date.now())} />
+              <Learn key={studyDeckId} deckId={studyDeckId} state={state} store={store} dispatch={dispatch} today={studyDay(Date.now())} />
+            </Screen>
+          )}
+          {route === 'fx' && (
+            <Screen route="fx">
+              <FxPreview show={setFx} />
             </Screen>
           )}
           {route === 'import' && (

@@ -72,10 +72,10 @@ function writePrefs(p: Prefs): void {
   }
 }
 
-type Props = { deckId: string; state: StoreState; store: Store; today: string };
+type Props = { deckId: string; state: StoreState; store: Store; dispatch: (cmd: Record<string, unknown>) => unknown; today: string };
 
 /** Màn Học, Viết và Kiểm tra (task 2.10, 2.11): thiết lập → phiên → kết quả, tất cả trong `#/study/<id>`. */
-export function Learn({ deckId, state, store, today }: Props) {
+export function Learn({ deckId, state, store, dispatch, today }: Props) {
   const deck: any = state.decks.find((d: any) => d.id === deckId);
   const [saved, setSavedState] = useState<Saved | null>(() => readSaved(deckId));
   const [result, setResult] = useState<Finished | null>(null);
@@ -120,7 +120,7 @@ export function Learn({ deckId, state, store, today }: Props) {
         saved={saved}
         onStep={(res) => {
           if (saved.recording && res.cmds.length) {
-            for (const cmd of res.cmds) store.dispatch(cmd);
+            for (const cmd of res.cmds) dispatch(cmd);
             void store.flush();
           }
           const next = { ...saved, state: res.state };

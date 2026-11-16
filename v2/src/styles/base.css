@@ -1472,6 +1472,180 @@ kbd {
   }
 }
 
+/* ---------- Streak: lửa bùng, băng, màn chúc mừng ---------- */
+
+.streak {
+  align-items: flex-start;
+}
+.streak-freeze {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+.streak-use {
+  justify-self: start;
+  margin-top: var(--space-2);
+}
+
+.flame[data-burst] {
+  animation: flame-burst 900ms var(--ease-out);
+  transform-origin: 50% 85%;
+}
+@keyframes flame-burst {
+  0% {
+    transform: scale(0.6);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  35% {
+    transform: scale(1.45) rotate(-4deg);
+    filter: drop-shadow(0 0 0.75rem var(--flame));
+  }
+  60% {
+    transform: scale(0.95) rotate(3deg);
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* Lửa bùng: nhãn nổi giữa đầu màn, không chiếm chỗ, không chặn thao tác */
+.flame-toast {
+  position: fixed;
+  z-index: 30;
+  top: calc(env(safe-area-inset-top, 0px) + var(--space-3));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100vw - 2rem);
+  padding: var(--space-2) var(--space-5) var(--space-2) var(--space-3);
+  background: var(--flame-soft);
+  border: 1px solid color-mix(in srgb, var(--flame) 45%, transparent);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: toast-life 2600ms var(--ease-out) both;
+}
+.flame-toast .flame {
+  width: 2rem;
+  height: 2rem;
+}
+.flame-toast > span {
+  display: grid;
+  line-height: 1.25;
+}
+.flame-toast-sub {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+@keyframes toast-life {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -0.75rem);
+  }
+  10%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -0.5rem);
+  }
+}
+
+/* Màn chúc mừng lớn ở mốc 10, 50, 100, 200… */
+.celebrate {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(10 10 20 / 0.6);
+  animation: celebrate-in var(--dur) var(--ease-out);
+}
+@keyframes celebrate-in {
+  from {
+    opacity: 0;
+  }
+}
+.celebrate-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: min(100%, 24rem);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: celebrate-card-in 420ms var(--ease-out);
+}
+@keyframes celebrate-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.94);
+  }
+}
+.celebrate-flame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 7rem;
+  height: 7rem;
+}
+.celebrate-flame .flame {
+  width: 6rem;
+  height: 6rem;
+  animation-duration: 1200ms;
+}
+.spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.25rem;
+  background: var(--flame);
+  border-radius: 50%;
+  opacity: 0;
+  animation: spark 1100ms var(--ease-out) 200ms;
+  --angle: calc(var(--i) * 36deg);
+}
+@keyframes spark {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--angle)) translateY(-1.5rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-5rem) scale(0.3);
+  }
+}
+.celebrate-count {
+  color: var(--flame);
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.celebrate-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.celebrate-card .btn {
+  margin-top: var(--space-3);
+}
+
+.fx-preview {
+  display: grid;
+  gap: var(--space-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1480,5 +1654,12 @@ kbd {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Giảm chuyển động: nhãn lửa vẫn phải nhìn thấy (animation của nó kết thúc ở trạng thái mờ hẳn) */
+@media (prefers-reduced-motion: reduce) {
+  .flame-toast {
+    animation: none !important;
   }
 }

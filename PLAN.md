@@ -651,7 +651,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: tạo, sửa, xoá mềm; dán danh sách; cảnh báo từ trùng deck khác (cho bỏ từ trùng hoặc giữ); gắn/gỡ sao. Không giới hạn số từ.
   - Có thể dời sang tuần sau: kho còn 4 deck mới.
 
-- [ ] **2.14b Streak: hiệu ứng và màn chúc mừng** — [UI] — cỡ 1 giờ (logic ở 2.14a)
+- [x] **2.14b Streak: hiệu ứng và màn chúc mừng** — [UI] — cỡ 1 giờ (logic ở 2.14a)
   - File: `v2/src/components/Flame.tsx`, `Celebration.tsx`.
   - Hành vi: từ streak 3, mỗi lần số tăng thì ngọn lửa bùng lên; mốc 10, 50, 100, 200, 300… hiện màn chúc mừng lớn giữa màn hình; trạng thái "đang nguy" + nút "Dùng băng"; hiện băng đang có và còn bao nhiêu ngày tới băng kế.
   - Tiêu chí tay: dùng dữ liệu giả để xem đủ: tăng số, mốc 10, đang nguy, dùng băng; bật `prefers-reduced-motion` thì hiệu ứng rút gọn.
@@ -1060,6 +1060,22 @@ Thử thêm ngoài checklist:
   - Tài khoản chưa có dữ liệu vẫn chỉ thấy màn Chuyển dữ liệu (luật 2.6), chưa tạo deck từ số 0 được.
 - Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả, 31/31 mục đạt: tạo deck (gõ tay + dán 2 kiểu dấu tách, dòng lỗi, 2 từ trùng không phân biệt hoa thường, bỏ từ trùng, giữ từ trùng, xoá dòng, gắn sao) → máy chủ có deck mới đúng thứ tự thẻ, mốc 0, vào "Kho deck mới" ở Hôm nay; sửa deck đang ôn (đổi tên, sửa nghĩa, đảo sao, bỏ thẻ, thêm thẻ) → mốc, lịch, lịch sử, điểm từng thẻ giữ nguyên; soạn dở tải lại thì trình duyệt hỏi, không ghi gì; xoá hỏi lại, xoá mềm (dòng deck còn trên máy chủ, đủ thẻ); dán 300 thẻ một lần lưu đủ; 360px không tràn ngang, vùng bấm ≥ 44px; console không lỗi. Chạy lại bài thử 2.11 (45/45), 2.12b (65/65).
 - Chưa thử được: điện thoại thật, Supabase thật.
+
+**Task 2.14b (17/11): streak, hiệu ứng và màn chúc mừng**
+- File mới: `v2/src/components/Flame.tsx` (ngọn lửa dùng chung + nhãn "lửa bùng"), `v2/src/components/Celebration.tsx`. Sửa `v2/src/App.tsx`, `v2/src/screens/Today.tsx`, `Learn.tsx`, `Result.tsx`, `v2/src/router.ts`, `v2/src/styles/base.css`.
+- Cách bắt sự kiện: mọi lệnh của app (câu trả lời, xong phiên, dùng băng, cài đặt, soạn deck) đi qua một hàm ở `App.tsx`, hàm này gọi `computeStreak` ngay trước và ngay sau lệnh rồi đưa vào `streakEvents`. Thay đổi tới từ máy khác (tải lại bản server) và lúc mở app không đi qua hàm này nên không gây hiệu ứng.
+- Lửa bùng (từ streak 3, mỗi lần số tăng): nhãn nổi giữa đầu màn "N ngày liên tiếp" với ngọn lửa bùng lên, tự tắt sau 2,6 giây, không chiếm chỗ, không lấy focus, không chặn thao tác (hiện được cả lúc đang làm bài). Nhận băng cùng lúc thì thêm dòng "Nhận 1 băng giữ lửa".
+- Mốc 10, 50, 100, 200, 300…: màn chúc mừng lớn giữa màn hình (ngọn lửa lớn, tia lửa, số ngày), đóng bằng nút "Tiếp tục", Enter, Esc hoặc bấm ra ngoài. Mốc thì chỉ hiện màn lớn, không hiện thêm nhãn nhỏ.
+- Hôm nay: thẻ streak thêm dòng băng ("Đang giữ 1 băng giữ lửa (tối đa 1)." hoặc "Chưa có băng giữ lửa · còn N ngày liên tiếp nữa thì nhận băng.") và nút **Dùng băng** khi đang nguy + có băng + hôm nay chưa bấm (phát lệnh `useFreeze`). Bấm xong dòng trạng thái thành "Đã dùng băng: cần 1 lượt hôm nay."
+- Người thực thi tự quyết (Khang xem lại):
+  - Lửa bùng là nhãn nổi dùng chung cho mọi màn, không gắn vào ngọn lửa của thẻ streak ở Hôm nay: số streak thường tăng lúc đang ở màn học / kết quả, lúc đó thẻ streak không có trên màn hình.
+  - Nhãn "N băng" cũ ở góc thẻ streak được thay bằng dòng băng nói trên.
+  - Thêm màn `#/fx` (không có trên thanh điều hướng, gõ địa chỉ mới vào được) để XEM THỬ hiệu ứng: lửa bùng, lửa bùng + nhận băng, mốc 10, mốc 100. Không ghi gì vào dữ liệu. Dùng cho tiêu chí tay "xem đủ" và để thử `prefers-reduced-motion`. Khang không cần thì bảo bỏ.
+  - Màn chúc mừng giữ focus cho tới khi đóng (màn kết quả hiện ra bên dưới cùng lúc không cướp được focus); đóng xong focus về nút "Về Hôm nay" hoặc ô đang gõ dở. Trong lúc màn chúc mừng mở, phím tắt của màn học bên dưới không chạy.
+  - Giảm chuyển động: nhãn lửa hiện tĩnh rồi tự tắt, màn chúc mừng hiện ngay không chạy hiệu ứng.
+  - Trường hợp 2.14a đã ghi (dùng băng đúng ngày chạm bội số 21: mất 1 nhận 1) không báo "nhận băng": giữ nguyên.
+- Đã thử bằng Chrome headless trên `npm run dev` với máy chủ giả và dữ liệu streak giả, 36/36 mục đạt: 2 → 3 lửa bùng; 1 → 2 không có gì; tải lại trang không bùng lại; 9 → 10 màn chúc mừng (giữa màn hình, focus ở nút, Enter đóng, không bị màn kết quả cướp focus, 320×568 nằm trọn); 20 → 21 lửa bùng + nhận băng, Hôm nay ghi đang giữ 1 băng; đang nguy có băng → nút "Dùng băng" → máy chủ ghi `freezeUsedDays`, cần 1 lượt, học 1 lượt → 22 và hết băng; đang nguy không băng → không có nút, 1 lượt chưa cứu, lượt thứ 2 cứu được và lửa bùng; `#/fx` chạy đủ 4 hiệu ứng, không ghi dữ liệu; `prefers-reduced-motion` thì hiệu ứng rút gọn mà vẫn nhìn thấy; console không lỗi. Chạy lại bài thử 2.10 (70/70), 2.11 (44/44), 2.12b (65/65), 2.13b (31/31).
+- Chưa thử được: nhìn hiệu ứng bằng mắt người (đẹp hay chưa, nhanh chậm ra sao), điện thoại thật. Khang mở `/vocab/v2/#/fx` để xem.
 
 ---
 

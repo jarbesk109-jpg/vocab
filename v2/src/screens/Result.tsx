@@ -140,7 +140,7 @@ export function Result({ deck, state, today, result, onAgain }: Props) {
       )}
 
       <div className="result-actions">
-        <a className="btn btn-primary btn-lg" href={hrefOf('today')} ref={homeRef}>
+        <a className="btn btn-primary btn-lg" href={hrefOf('today')} ref={homeRef} data-autofocus="">
           Về Hôm nay
         </a>
         <button className="btn btn-lg" type="button" onClick={onAgain}>

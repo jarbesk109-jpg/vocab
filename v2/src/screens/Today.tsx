@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
-import { computeStreak, paceInfo, planToday } from '../../../logic/index.js';
+import { FREEZE_EVERY, FREEZE_MAX, computeStreak, paceInfo, planToday } from '../../../logic/index.js';
+import { Flame } from '../components/Flame';
 import type { StoreState } from '../data/useStore';
 import { hrefOf, studyHref } from '../router';
 
@@ -70,14 +71,6 @@ function paceText(p: { pace: number | null; everyDays: number | null; everyDaysP
   return `Nhịp hiện tại ${vn(p.pace)} lượt/ngày → ${now}. Làm thêm 1 lượt/ngày → ${p.everyDaysPlus1} ngày một lần.`;
 }
 
-function Flame({ lit }: { lit: boolean }) {
-  return (
-    <svg className="flame" data-lit={lit ? '' : undefined} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12.4 2.2c.5 3.2-1 5-2.6 6.7C8 10.800 6 12.800 6 15.800A6.1 6.1 0 0 0 12 22a6.1 6.1 0 0 0 6-6.200c0-2.300-1-4.200-2.300-5.700-.300 1.500-1 2.500-2 3.100.500-3.700-.300-7.800-1.300-11Z" />
-    </svg>
-  );
-}
-
 function Tag({ status }: { status: any }) {
   const t = tagOf(status);
   return (
@@ -122,7 +115,9 @@ function Fold({ title, items, today }: { title: string; items: Item[]; today: st
 }
 
 /** Màn Hôm nay (task 2.9): streak, MỘT nút chính, các deck còn lại của hôm nay, cổng deck mới, nhịp học. */
-export function Today({ state, today }: { state: StoreState; today: string }) {
+type TodayProps = { state: StoreState; today: string; send: (cmd: Record<string, unknown>) => unknown };
+
+export function Today({ state, today, send }: TodayProps) {
   const plan = useMemo(() => planToday(state.decks, today), [state.decks, today]);
   const streak = useMemo(
     () => computeStreak(state.meta.activity || {}, state.meta.streak?.freezeUsedDays ?? [], today),
@@ -146,6 +141,12 @@ export function Today({ state, today }: { state: StoreState; today: string }) {
   else statusLine = `Streak đang nguy: hôm qua lỡ. Hôm nay còn thiếu ${streak.needUnits} lượt (thiếu deck thì 20 câu thay 1 lượt).`;
 
   const gate = gateText(plan.gate);
+  const canFreeze = streak.status === 'atRisk' && streak.freezes > 0 && !freezeUsedToday;
+  const toNext = FREEZE_EVERY - (streak.count % FREEZE_EVERY);
+  const freezeLine =
+    streak.freezes >= FREEZE_MAX
+      ? `Đang giữ ${streak.freezes} băng giữ lửa (tối đa ${FREEZE_MAX}).`
+      : `Chưa có băng giữ lửa · còn ${toNext} ngày liên tiếp nữa thì nhận băng.`;
 
   return (
     <div className="today">
@@ -156,8 +157,13 @@ export function Today({ state, today }: { state: StoreState; today: string }) {
             <strong>{streak.count}</strong> ngày liên tiếp
           </p>
           <p className="streak-status">{statusLine}</p>
+          <p className="streak-freeze">{freezeLine}</p>
+          {canFreeze && (
+            <button className="btn streak-use" type="button" onClick={() => send({ type: 'useFreeze' })}>
+              Dùng băng
+            </button>
+          )}
         </div>
-        {streak.freezes > 0 && <span className="tag" data-kind="rev">{streak.freezes} băng</span>}
       </section>
 
       {resumeDeck && (
