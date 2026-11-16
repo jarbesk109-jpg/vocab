@@ -1100,6 +1100,13 @@ Thử thêm ngoài checklist:
 - Chưa thử được: Supabase thật (đọc và xoá dòng `snapshots` thật), điện thoại thật.
 - Lưu ý khi dùng trang thật: bản sao hằng tuần sẽ tự ghi vào bảng `snapshots` thật lần đầu mở app sau khi bản sao gần nhất quá 7 ngày (bản `before-import` của Khang ghi ngày 15/11, nên sớm nhất là 22/11).
 
+**SỰ CỐ DEPLOY (17/11, phát hiện sau khi push 2.15): hai luồng deploy chạy đua, CẦN KHANG SỬA Ở SETTINGS**
+- Mỗi lần push `main`, GitHub chạy HAI luồng cùng lúc: workflow `deploy` (`.github/workflows/deploy.yml`, dựng v1 đóng băng + bản build v2) và "pages build and deployment" (kiểu cũ: đưa nguyên mã nguồn của nhánh lên). Luồng nào xong SAU thì trang thật theo luồng đó. Danh sách run công khai cho thấy cả hai chạy ở mọi lần push hôm nay; các lần trước workflow `deploy` về sau nên kiểm tra đều khớp.
+- Sau lần push 2.15 (`5ac78dc..a99ff29`), luồng kiểu cũ về sau 3 giây. Kết quả đo được trên trang thật: `/vocab/v2/` trả `index.html` MÃ NGUỒN (trỏ tới `/src/main.tsx`, app không chạy, màn trắng); `/vocab/v2/assets/…js` 404; `/vocab/PLAN.md`, `/vocab/logic/store.js`, `/vocab/v2/src/main.tsx` trả 200 (lẽ ra 404). `/vocab/app.js` vẫn khớp từng byte với tag `v1-live-1` (v1 trên `main` chưa đổi), nên v1 vẫn chạy; dữ liệu trên Supabase không bị đụng.
+- Nguyên nhân có khả năng nhất: repo → Settings → Pages → Source đang là "Deploy from a branch" thay vì "GitHub Actions" (việc của Khang ở task 2.2). Người thực thi không xem được và không đổi được cài đặt này.
+- **Việc của Khang:** repo → Settings → Pages → Build and deployment → Source: chọn **GitHub Actions**. Sau đó luồng kiểu cũ không chạy nữa. Rồi chạy lại workflow `deploy` (Actions → deploy → Run workflow), hoặc bảo người thực thi push một commit.
+- Việc người thực thi đã làm: ghi mục này và push (một lần push nữa để hai luồng chạy lại; không sửa workflow, không force). Kết quả ghi ở dòng dưới.
+
 ---
 
 ## Phụ lục A — Sự thật về file JSON thật (để đối chiếu)
