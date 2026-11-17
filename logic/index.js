@@ -10,3 +10,4 @@ export * from './answers.js';
 export * from './session.js';
 export * from './store.js';
 export * from './mastery.js';
+export * from './weak.js';

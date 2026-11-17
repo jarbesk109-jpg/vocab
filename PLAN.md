@@ -1128,6 +1128,24 @@ Thử thêm ngoài checklist:
   1. Token `--ok` (giao diện sáng) `#15803d` → `#147a3a`: cùng tông xanh, đậm hơn một chút; trên nền `--ok-soft` tương phản 4,36 → 4,71 : 1 (trên nền trắng 5,42). Giao diện tối không đổi (8,2 : 1).
   2. Màn soạn: ô từ và ô nghĩa xếp MỘT hàng chỉ khi khối danh sách thẻ rộng từ 36rem; hẹp hơn thì HAI hàng. Xét theo bề rộng của khối (`@container`), không thêm điểm ngắt màn hình. Đo được: 720px, 760px, 800px → hai hàng (ô từ 301–370px); 880px trở lên → một hàng; 719px (không có cột trái, khối rộng 660px) → một hàng, ô từ 187px. Bài quét 2.16 chạy lại 30/30, bài thử 2.13b 31/31; chỗ tương phản thấp duy nhất còn lại là dấu ★ (trang trí).
 
+**Phase 3, phần LOGIC (Khang 17/11): làm một mạch 4 mục, test trước, mỗi mục một commit + push; CHƯA làm giao diện, CHƯA làm 2.17**
+
+**P3.1 Thẻ yếu: logic (17/11)**
+- File: `logic/weak.js` (`WEAK_NAME`, `isWeakCard`, `splitWeak`), `tests/weak.test.js` (25 test, viết trước); `logic/store.js` gọi `splitWeak` trong lệnh `sessionDone` khi deck vừa qua mốc +16.
+- Luật đã cài:
+  - Thẻ "còn sai ở lần ôn +16" = thẻ có ít nhất một chiều mà lần trả lời gần nhất là HÔM ĐÓ và sai (`last = hôm đó`, `streak = 0`). Sai rồi bấm "Tôi đã gõ đúng" thì không tính.
+  - Chỉ tách khi deck VỪA XONG VÒNG: bài Kiểm tra đủ ở mốc +16 đạt KPI. Trượt KPI thì chưa tách gì (deck còn ở mốc +16, làm lại). Luyện tập, Học, Viết không tách.
+  - Thẻ tách ra rời hẳn deck gốc, sang deck tên "Thẻ yếu" (`kind: 'weak'`, app tự tạo khi cần, id `weak-<id lệnh>` để mọi máy ra cùng id), giữ nguyên điểm và sao, thêm `weakFrom` = id deck gốc.
+  - Lịch riêng: deck "Thẻ yếu" bắt đầu ở mốc +1 tính từ hôm tách (hẹn ôn hôm sau), rồi +3, +7, +16 như deck thường.
+- Người thực thi tự quyết (Khang xem lại):
+  - Chỉ có MỘT deck "Thẻ yếu". Mỗi lần có thẻ mới vào, cả deck quay về mốc +1 từ hôm đó (kể cả các thẻ yếu cũ đang ở mốc cao hơn). Lý do: lịch ôn tính theo deck, không theo thẻ.
+  - Khi chính deck "Thẻ yếu" qua mốc +16: thẻ đã đúng TRỞ VỀ deck gốc (deck gốc đã xong vòng nên thẻ cũng coi như xong); thẻ còn sai ở lại và deck chạy lại từ mốc +1. Hết thẻ sai thì deck "Thẻ yếu" ở trạng thái xong vòng, có thể rỗng (không tự xoá). Deck gốc đã bị xoá thì thẻ ở lại deck "Thẻ yếu", không mất.
+  - Deck "Thẻ yếu" không tính là "bắt đầu một deck mới" khi xét cổng deck mới, không đổi tên theo ngày, và đi qua danh sách Hôm nay như một deck ôn bình thường.
+  - Deck "Thẻ yếu" đã bị xoá mềm thì không dùng lại; lần sau tạo deck mới.
+  - Sửa kèm một dòng ở giao diện đang chạy (`v2/src/screens/Result.tsx`): danh sách câu sai tìm thẻ ở mọi deck, vì thẻ sai ở lần ôn +16 đã sang "Thẻ yếu" ngay lúc xong bài (không sửa thì hiện "(thẻ đã xoá)"). Ngoài dòng này chưa có giao diện nào cho Thẻ yếu: deck hiện ra như một deck thường, màn Kết quả chưa nói "N thẻ đã sang Thẻ yếu".
+- LƯU Ý: logic nằm trong bản build v2 nên có hiệu lực trên trang thật ngay sau khi push. Từ giờ, deck qua mốc +16 trên trang thật sẽ tách thẻ sai.
+- `npm test`: 396 test xanh; `npm run build` xanh.
+
 ---
 
 ## Phụ lục A — Sự thật về file JSON thật (để đối chiếu)

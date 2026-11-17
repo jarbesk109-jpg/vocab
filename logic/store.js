@@ -5,8 +5,9 @@
 import { bumpCard, overrideRight } from './answers.js';
 import { renameOnDay1 } from './decks.js';
 import { emptyState, toV1, toV2 } from './migrate.js';
-import { applySessionResult, availableUnits } from './schedule.js';
+import { OFFSETS, applySessionResult, availableUnits } from './schedule.js';
 import { creditSession, recordAnswer, useFreeze } from './streak.js';
+import { splitWeak } from './weak.js';
 
 /** Khoá localStorage của hàng chờ gửi. */
 export const OUTBOX_KEY = 'recall.outbox.v1';
@@ -139,7 +140,9 @@ export function applyCommand(state, cmd) {
       if (cmd.mode === 'write') {
         deck = { ...deck, history: [...(deck.history || []), { date: day, pct: Math.round(cmd.pct), mode: 'write' }] };
       }
-      const next = withDeck(state, i, deck);
+      let next = withDeck(state, i, deck);
+      // Phase 3: vừa qua mốc +16 (xong vòng) thì thẻ còn sai tách sang deck "Thẻ yếu"
+      if (res.advanced && res.stageTo >= OFFSETS.length) next = splitWeak(next, cmd.deckId, day, cmd.id);
       if (!res.credit) return next;
       const activity = meta.activity || {};
       const d = creditedOn(activity, day);

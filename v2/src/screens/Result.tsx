@@ -124,7 +124,8 @@ export function Result({ deck, state, today, result, onAgain }: Props) {
           <h3 className="section-title">Câu sai ({wrong.length})</h3>
           <ul>
             {wrong.map((w, i) => {
-              const c = cards.find((x) => x.id === w.cardId);
+              // Thẻ sai ở lần ôn +16 đã được tách sang deck "Thẻ yếu" ngay khi xong bài: tìm ở mọi deck.
+              const c = cards.find((x) => x.id === w.cardId) ?? state.decks.flatMap((d: any) => d.cards || []).find((x: any) => x.id === w.cardId);
               return (
                 <li key={i}>
                   <span className="tag">{w.dir === 'prod' ? 'Việt → Anh' : 'Anh → Việt'}</span>
