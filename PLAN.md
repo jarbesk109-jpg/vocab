@@ -661,7 +661,7 @@ Trong Đợt A, việc khó suy luận nhất đứng trước (chuyển dữ li
   - Hành vi: KPI; tắt tiếng; tài khoản + Đăng xuất (outbox còn lệnh thì cảnh báo); mục "Nâng cao" gập sẵn chứa nút **Tải bản sao** (JSON dạng v1, tên `recall-backup-YYYY-MM-DD.json`) và danh sách deck đã xoá để khôi phục. Mở app mà bản `snapshots` gần nhất đã quá 7 ngày thì lặng lẽ ghi bản mới (`reason 'weekly'`), giữ 8 bản gần nhất. Không có bất kỳ lời nhắc backup nào.
   - Tiêu chí tay: file tải về nhập lại được và bằng dữ liệu đang có.
 
-- [ ] **2.16 Rà độ mượt** — [UI] — cỡ 2 giờ
+- [x] **2.16 Rà độ mượt** — [UI] — cỡ 2 giờ
   - Đi qua mọi màn với chuẩn độ mượt ở đầu mục 5, trên laptop (kéo cửa sổ, zoom 80–200%) và điện thoại thật; so cảm giác với Track List. Sửa mọi chỗ giật, vỡ, nháy.
 
 - [ ] **2.17 Chuyển hẳn sang v2** — [UI] — cỡ 1 giờ — CẦN KHANG XÁC NHẬN TRƯỚC KHI PUSH
@@ -1107,6 +1107,22 @@ Thử thêm ngoài checklist:
 - **Việc của Khang:** repo → Settings → Pages → Build and deployment → Source: chọn **GitHub Actions**. Sau đó luồng kiểu cũ không chạy nữa. Rồi chạy lại workflow `deploy` (Actions → deploy → Run workflow), hoặc bảo người thực thi push một commit.
 - Việc người thực thi đã làm: ghi mục này và push (một lần push nữa để hai luồng chạy lại; không sửa workflow, không force). Kết quả ghi ở dòng dưới.
 - Kết quả lần push ghi chú (`a99ff29..3de0832`): lần này workflow `deploy` về sau 14 giây. Trang thật đã đúng trở lại: `/vocab/v2/` phục vụ bản build khớp bản build ở máy (có 2.15), `/vocab/PLAN.md` 404. Dòng này được commit ở máy nhưng CỐ Ý CHƯA push, vì mỗi lần push là một lần chạy đua nữa; nó sẽ đi cùng lần push kế tiếp. Chừng nào Khang chưa đổi Source thì mọi lần push sau đều có thể làm trang trắng lại.
+- **Khang (17/11):** đã kiểm Settings → Pages → Source = GitHub Actions; duyệt các chỗ tự quyết của 2.15. Lần push `3de0832..15cd2cd` sau đó chỉ còn MỘT luồng `deploy` chạy (không còn "pages build and deployment"); trang thật đúng: `/vocab/v2/` khớp bản build ở máy, `/vocab/PLAN.md`, `/vocab/logic/store.js`, `/vocab/v2/src/main.tsx` đều 404, `app.js` của v1 khớp tag `v1-live-1`.
+
+**Task 2.16 (17/11): rà độ mượt**
+- Cách rà: một bài quét tự động bằng Chrome headless (máy chủ giả) đi qua 19 màn / trạng thái: Hôm nay (mở hết mục gập), Học phần, Chi tiết, Sửa học phần, Tạo học phần, Cài đặt (mở Nâng cao), Chuyển dữ liệu, màn chúc mừng, Thiết lập (Kiểm tra / luyện tập / Học), Học trắc nghiệm (hỏi, sai), Học tự luận (hỏi, sai), Kiểm tra đúng/sai, Kết quả có danh sách sai, Đăng nhập. Mỗi màn đo ở 20 bề rộng từ 320 tới 1708px và 4 mức cỡ chữ mặc định (80%, 125%, 150%).
+- Zoom trình duyệt 80–200%: zoom N% trên cửa sổ rộng W cho ra đúng bố cục của cửa sổ rộng W × 100 / N, nên được phủ bằng chính các bề rộng 550 (1100 @200%), 683 (1366 @200%), 1375 (1100 @80%), 1708 (1366 @80%).
+- Mỗi lần đo kiểm: không tràn ngang; không phần tử nào thò ra ngoài màn; vùng bấm ≥ 44px; chữ không bị cắt; chữ không nhỏ hơn 0.75rem; ô nhập không nhỏ hơn 1rem (để iOS không tự phóng to trang); cuối trang không bị thanh điều hướng dưới che. Ngoài ra đo: độ xê dịch bố cục (CLS) khi phản hồi đúng/sai hiện ra, khi tự qua câu, và khi dữ liệu máy chủ về chậm 0,6 giây sau khi màn đã vẽ từ bản lưu (Hôm nay, Học phần, Cài đặt, Chi tiết); đổi Sáng/Tối; thời lượng mọi `transition`; số điểm ngắt; `prefers-reduced-motion`.
+- Lỗi tìm ra và đã sửa (`v2/src/styles/base.css`):
+  1. Hai chỗ dùng điểm ngắt 40em (640px) ở màn chi tiết và màn soạn → đổi về 45em (720px) như chuẩn. Giờ cả app chỉ còn một điểm ngắt bề rộng.
+  2. Màn chi tiết, chữ to trên màn hẹp (414px, cỡ chữ 150%): dải 5 mốc bị cắt chữ "đã qua" → cho chữ trong ô mốc xuống dòng.
+  3. Thẻ chúc mừng hiện ra trong 420ms → 250ms (chuẩn 150–250ms). Ngọn lửa bùng 0,9 giây và tia lửa là hiệu ứng, không phải chuyển cảnh, giữ nguyên.
+  4. Bốn chỗ chữ xám nhạt (`--ink-3`) mang thông tin, tương phản thấp ở giao diện sáng (2,95–3,41 : 1): dòng băng ở thẻ streak, tên mốc chưa qua, số thứ tự thẻ ở màn soạn, nhãn "chưa học" → đổi sang `--ink-2`. Không đổi token màu.
+- Kết quả sau khi sửa: 30/30 mục đạt, không còn lỗi bố cục nào ở bất kỳ màn / bề rộng / cỡ chữ nào; CLS = 0 ở mọi phép đo; mọi `transition` nằm trong 150–250ms với `cubic-bezier(0.22, 1, 0.36, 1)`; đổi Sáng/Tối có hiệu lực ngay khung hình kế; `prefers-reduced-motion` thì chuyển màn gần như tức thì; console không lỗi. Chạy lại toàn bộ bài thử cũ: 2.10 (70/70), 2.11 (44/44), 2.12b (65/65), 2.13b (31/31), 2.14b (36/36), 2.15 (40/40).
+- Còn lại, biết mà chưa sửa (Khang quyết):
+  - Chữ xanh lá trên nền xanh nhạt (mốc đã qua, nhãn "✓ thuộc") tương phản 4,36 : 1 ở giao diện sáng, hơi dưới mức 4,5. Muốn sửa phải đổi token `--ok`, là màu của nhận diện đã duyệt.
+  - Màn soạn ở đúng 720–800px: ô từ còn khoảng 100px (đủ bấm, hơi hẹp để gõ cụm dài).
+- **Phần của task này mà người thực thi KHÔNG làm được:** thử trên điện thoại thật, kéo cửa sổ bằng tay để xem có giật không, và "so cảm giác với Track List". Bài quét chỉ đo được số (kích thước, tràn, xê dịch, thời lượng), không đo được cảm giác. Task được tick theo phần đo được; phần cảm giác chờ Khang thử, thấy chỗ nào giật / vỡ / nháy thì báo để sửa.
 
 ---
 

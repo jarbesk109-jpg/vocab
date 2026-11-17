@@ -1259,11 +1259,11 @@ kbd {
   background: var(--surface-2);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: var(--text-xs);
   font-weight: 600;
   text-align: center;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .dp-stages li[data-passed] {
   background: var(--ok-soft);
@@ -1334,9 +1334,9 @@ kbd {
   color: var(--ok);
 }
 .dir-chip[data-kind='none'] {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
-@media (min-width: 40em) {
+@media (min-width: 45em) {
   .deck-cards li {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -1397,7 +1397,7 @@ kbd {
 }
 .editor-cards li > .editor-no {
   grid-area: no;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -1463,7 +1463,7 @@ kbd {
 .editor-confirm > span {
   flex: 1 1 14rem;
 }
-@media (min-width: 40em) {
+@media (min-width: 45em) {
   .editor-cards li {
     grid-template-columns: 1.75rem minmax(0, 2fr) minmax(0, 3fr) var(--tap) var(--tap);
     grid-template-areas: 'no term def star del';
@@ -1478,7 +1478,7 @@ kbd {
   align-items: flex-start;
 }
 .streak-freeze {
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: var(--text-sm);
 }
 .streak-use {
@@ -1582,7 +1582,7 @@ kbd {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   text-align: center;
-  animation: celebrate-card-in 420ms var(--ease-out);
+  animation: celebrate-card-in 250ms var(--ease-out);
 }
 @keyframes celebrate-card-in {
   from {
