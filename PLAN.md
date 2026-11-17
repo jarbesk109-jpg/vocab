@@ -1124,6 +1124,10 @@ Thử thêm ngoài checklist:
   - Màn soạn ở đúng 720–800px: ô từ còn khoảng 100px (đủ bấm, hơi hẹp để gõ cụm dài).
 - **Phần của task này mà người thực thi KHÔNG làm được:** thử trên điện thoại thật, kéo cửa sổ bằng tay để xem có giật không, và "so cảm giác với Track List". Bài quét chỉ đo được số (kích thước, tràn, xê dịch, thời lượng), không đo được cảm giác. Task được tick theo phần đo được; phần cảm giác chờ Khang thử, thấy chỗ nào giật / vỡ / nháy thì báo để sửa.
 
+- **Khang duyệt 2.16 (17/11)** và quyết hai chỗ còn chờ; đã làm:
+  1. Token `--ok` (giao diện sáng) `#15803d` → `#147a3a`: cùng tông xanh, đậm hơn một chút; trên nền `--ok-soft` tương phản 4,36 → 4,71 : 1 (trên nền trắng 5,42). Giao diện tối không đổi (8,2 : 1).
+  2. Màn soạn: ô từ và ô nghĩa xếp MỘT hàng chỉ khi khối danh sách thẻ rộng từ 36rem; hẹp hơn thì HAI hàng. Xét theo bề rộng của khối (`@container`), không thêm điểm ngắt màn hình. Đo được: 720px, 760px, 800px → hai hàng (ô từ 301–370px); 880px trở lên → một hàng; 719px (không có cột trái, khối rộng 660px) → một hàng, ô từ 187px. Bài quét 2.16 chạy lại 30/30, bài thử 2.13b 31/31; chỗ tương phản thấp duy nhất còn lại là dấu ★ (trang trí).
+
 ---
 
 ## Phụ lục A — Sự thật về file JSON thật (để đối chiếu)

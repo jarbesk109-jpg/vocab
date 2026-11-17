@@ -49,7 +49,7 @@
   --accent-text: #4338ca; /* chữ màu nhấn trên nền sáng, đủ tương phản */
   --flame: #ea6a0c;
   --flame-soft: #fdeede;
-  --ok: #15803d;
+  --ok: #147a3a; /* trên nền --ok-soft đạt 4,7 : 1 */
   --ok-soft: #e3f3e8;
   --bad: #c62828;
   --bad-soft: #fbe7e6;

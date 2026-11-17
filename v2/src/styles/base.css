@@ -1463,7 +1463,12 @@ kbd {
 .editor-confirm > span {
   flex: 1 1 14rem;
 }
-@media (min-width: 45em) {
+/* Một hàng (từ | nghĩa) chỉ khi khối danh sách thẻ đủ rộng; hẹp hơn (điện thoại, hoặc laptop 720–800px
+   khi cột trái chiếm chỗ) thì từ và nghĩa xếp thành hai hàng. Xét theo bề rộng của KHỐI, không theo màn hình. */
+.editor-cards {
+  container-type: inline-size;
+}
+@container (min-width: 36rem) {
   .editor-cards li {
     grid-template-columns: 1.75rem minmax(0, 2fr) minmax(0, 3fr) var(--tap) var(--tap);
     grid-template-areas: 'no term def star del';
